@@ -2,3 +2,6 @@ spacy
 nltk
 flask
 PyJWT
+openai
+python-dotenv
+requests
