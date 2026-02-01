@@ -1,0 +1,30 @@
+.container {
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+label {
+  font-weight: bold;
+  margin-top: 15px;
+  display: block;
+}
+
+select, button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+button {
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  margin-top: 20px;
+}
+
+button:disabled {
+  background-color: gray;
+}
