@@ -20,32 +20,46 @@ function Login({ switchToRegister }) {
   };
 
   return (
-    <form className="card" onSubmit={handleLogin}>
-      <h2>Login</h2>
+    <div className="auth-card animate-fade-in">
+      <form className="glass-card" onSubmit={handleLogin}>
+        <h2 className="title">Welcome Back</h2>
 
-      {error && <p className="error">{error}</p>}
+        {error && (
+          <div className="error-msg">
+            <span>⚠️</span> {error}
+          </div>
+        )}
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+        <div className="form-group">
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <div className="form-group">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
-      <button type="submit">Login</button>
+        <button type="submit" className="btn-primary">
+          Sign In
+        </button>
 
-      <p>
-        Don't have an account?{" "}
-        <span onClick={switchToRegister}>Register</span>
-      </p>
-    </form>
+        <p className="text-center mt-4">
+          <span className="text-muted" style={{ color: 'var(--text-muted)' }}>New here? </span>
+          <span className="text-link" onClick={switchToRegister}>
+            Create an account
+          </span>
+        </p>
+      </form>
+    </div>
   );
 }
 

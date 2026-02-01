@@ -1,10 +1,10 @@
 import { useState } from "react";
-import "../styles/createPaper.css";
+import "../App.css";
 
 const SUBJECT_TOPICS = {
-  DBMS: ["Normalization", "ER Model", "Transactions"],
-  OS: ["Processes", "Memory Management", "Deadlocks"],
-  CN: ["OSI Model", "TCP/IP", "Routing"]
+  DBMS: ["Normalization", "ER Model", "Transactions", "SQL", "Indexing", "Relational Algebra"],
+  OS: ["Processes", "Memory Management", "Deadlocks", "Scheduling", "File Systems", "Virtual Memory"],
+  CN: ["OSI Model", "TCP/IP", "Routing", "Network Security", "DNS", "HTTP/HTTPS"]
 };
 
 const BLOOMS = [
@@ -33,68 +33,94 @@ function CreatePaper() {
   const submitHandler = () => {
     const data = { subject, topics, blooms, difficulty };
     console.log("Data sent to backend:", data);
-    alert("Request sent to backend");
+    alert("Request generated successfully!");
   };
 
   const disabled =
     !subject || topics.length === 0 || blooms.length === 0 || !difficulty;
 
   return (
-    <div className="container">
-      <h2>Create Question Paper</h2>
+    <div className="paper-container animate-fade-in">
+      <div className="glass-card">
+        <h2 className="title">Generate Question Paper</h2>
 
-      <label>Subject</label>
-      <select value={subject} onChange={e => {
-        setSubject(e.target.value);
-        setTopics([]);
-      }}>
-        <option value="">Select Subject</option>
-        {Object.keys(SUBJECT_TOPICS).map(sub => (
-          <option key={sub} value={sub}>{sub}</option>
-        ))}
-      </select>
+        {/* Subject Selection */}
+        <div className="form-section">
+          <label className="section-title">Select Subject</label>
+          <select
+            value={subject}
+            onChange={e => {
+              setSubject(e.target.value);
+              setTopics([]);
+            }}
+          >
+            <option value="">-- Choose a Subject --</option>
+            {Object.keys(SUBJECT_TOPICS).map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+        </div>
 
-      {subject && (
-        <>
-          <label>Topics</label>
-          {SUBJECT_TOPICS[subject].map(topic => (
-            <div key={topic}>
-              <input
-                type="checkbox"
-                onChange={() => toggle(topic, topics, setTopics)}
-              />
-              {topic}
+        {/* Topics Selection */}
+        {subject && (
+          <div className="form-section animate-fade-in">
+            <label className="section-title">Select Topics</label>
+            <div className="chips-grid">
+              {SUBJECT_TOPICS[subject].map(topic => (
+                <div
+                  key={topic}
+                  className={`chip ${topics.includes(topic) ? 'active' : ''}`}
+                  onClick={() => toggle(topic, topics, setTopics)}
+                >
+                  {topic}
+                </div>
+              ))}
             </div>
-          ))}
-        </>
-      )}
+          </div>
+        )}
 
-      <label>Bloom's Taxonomy</label>
-      {BLOOMS.map(level => (
-        <div key={level}>
-          <input
-            type="checkbox"
-            onChange={() => toggle(level, blooms, setBlooms)}
-          />
-          {level}
+        {/* Bloom's Taxonomy */}
+        <div className="form-section">
+          <label className="section-title">Bloom's Taxonomy Levels</label>
+          <div className="chips-grid">
+            {BLOOMS.map(level => (
+              <div
+                key={level}
+                className={`chip ${blooms.includes(level) ? 'active' : ''}`}
+                onClick={() => toggle(level, blooms, setBlooms)}
+              >
+                {level}
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
 
-      <label>Difficulty</label>
-      {["Easy", "Medium", "Hard"].map(d => (
-        <div key={d}>
-          <input
-            type="radio"
-            name="difficulty"
-            onChange={() => setDifficulty(d)}
-          />
-          {d}
+        {/* Difficulty Selection */}
+        <div className="form-section">
+          <label className="section-title">Difficulty Level</label>
+          <div className="difficulty-grid">
+            {["Easy", "Medium", "Hard"].map(d => (
+              <div
+                key={d}
+                className={`difficulty-card ${difficulty === d ? 'active' : ''}`}
+                onClick={() => setDifficulty(d)}
+              >
+                <span className="label">{d}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
 
-      <button disabled={disabled} onClick={submitHandler}>
-        Generate Question Paper
-      </button>
+        {/* Action Button */}
+        <button
+          className="btn-primary"
+          disabled={disabled}
+          onClick={submitHandler}
+          style={{ marginTop: '2rem' }}
+        >
+          {disabled ? "Complete all fields to generate" : "Generate Question Paper"}
+        </button>
+      </div>
     </div>
   );
 }

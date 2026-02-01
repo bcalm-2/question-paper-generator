@@ -25,46 +25,55 @@ function Register({ switchToLogin }) {
   };
 
   return (
-    <form className="card" onSubmit={handleRegister}>
-      <h2>Register</h2>
+    <div className="auth-card animate-fade-in">
+      <form className="glass-card" onSubmit={handleRegister}>
+        <h2 className="title">Create Account</h2>
 
-      {error && <p className="error">{error}</p>}
+        {error && (
+          <div className="error-msg">
+            <span>⚠️</span> {error}
+          </div>
+        )}
 
-      <input
-        type="text"
-        placeholder="Name"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
+        <div className="form-group">
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </div>
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={form.email}
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
-      />
+        <div className="form-group">
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={form.password}
-        onChange={(e) => setForm({ ...form, password: e.target.value })}
-      />
+        <div className="form-group">
+          <input
+            type="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </div>
 
-      <select
-        value={form.role}
-        onChange={(e) => setForm({ ...form, role: e.target.value })}
-      >
-        <option value="Teacher">Teacher</option>
-      </select>
+        <button type="submit" className="btn-primary">
+          Sign Up
+        </button>
 
-      <button type="submit">Register</button>
-
-      <p>
-        Already have an account?{" "}
-        <span onClick={switchToLogin}>Login</span>
-      </p>
-    </form>
+        <p className="text-center mt-4">
+          <span className="text-muted" style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
+          <span className="text-link" onClick={switchToLogin}>
+            Log in
+          </span>
+        </p>
+      </form>
+    </div>
   );
 }
 

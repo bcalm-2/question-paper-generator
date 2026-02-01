@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import CreatePaper from "./components/create_paper";
 import { useState } from "react";
 import Login from "./components/Login";
 import Register from "./components/Register";
+import CreatePaper from "./components/Paper";
 import "./App.css";
 
 function App() {
@@ -10,16 +10,24 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {<div className="container">
-               {isLogin ? (
-                 <Login switchToRegister={() => setIsLogin(false)} />
-               ) : (
-                 <Register switchToLogin={() => setIsLogin(true)} />
-               )}
-             </div>}
-        <Route path="/" element={<CreatePaper />} />
-      </Routes>
+      <div className="app-container">
+        <Routes>
+          <Route
+            path="/auth"
+            element={
+              <div className="auth-container">
+                {isLogin ? (
+                  <Login switchToRegister={() => setIsLogin(false)} />
+                ) : (
+                  <Register switchToLogin={() => setIsLogin(true)} />
+                )}
+              </div>
+            }
+          />
+
+          <Route path="/" element={<CreatePaper />} />
+        </Routes>
+      </div>
     </BrowserRouter>
   );
 }
