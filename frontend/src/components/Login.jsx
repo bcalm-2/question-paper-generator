@@ -1,7 +1,9 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Login({ switchToRegister }) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,7 +18,7 @@ function Login({ switchToRegister }) {
 
     setError("");
     console.log("Login Data:", { email, password });
-
+    navigate("/dashboard");
   };
 
   return (

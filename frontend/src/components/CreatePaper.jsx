@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../App.css";
 
 const SUBJECT_TOPICS = {
@@ -17,6 +18,7 @@ const BLOOMS = [
 ];
 
 function CreatePaper() {
+  const navigate = useNavigate();
   const [subject, setSubject] = useState("");
   const [topics, setTopics] = useState([]);
   const [blooms, setBlooms] = useState([]);
@@ -42,6 +44,22 @@ function CreatePaper() {
   return (
     <div className="paper-container animate-fade-in">
       <div className="glass-card">
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "var(--text-muted)",
+            marginBottom: "1rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "0.9rem"
+          }}
+        >
+          ← Back to Dashboard
+        </button>
         <h2 className="title">Generate Question Paper</h2>
 
         {/* Subject Selection */}
