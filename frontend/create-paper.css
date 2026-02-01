@@ -1,0 +1,36 @@
+body {
+  background-color: #f2f6ff;
+  font-family: Arial, sans-serif;
+}
+
+.upload-box {
+  background-color: #ffffff;
+  width: 420px;
+  padding: 20px;
+  margin: 60px auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.upload-box h3 {
+  text-align: center;
+}
+
+.upload-box input,
+.upload-box button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+}
+
+.upload-box button {
+  background-color: #4f6bed;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.upload-box button:hover {
+  background-color: #3b55c4;
+}
