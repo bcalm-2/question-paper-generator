@@ -2,3 +2,5 @@ spacy
 nltk
 flask
 PyJWT
+flask
+werkzeug
