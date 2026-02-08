@@ -9,10 +9,26 @@ app = Flask(__name__)
 
 users = []
 sessions = {}
+papers = []
+
+CONFIG = {
+    "SUBJECT_TOPICS": {
+        "DBMS": ["Normalization", "ER Model", "Transactions", "SQL", "Indexing", "Relational Algebra", "NoSQL", "Query Optimization"],
+        "OS": ["Processes", "Memory Management", "Deadlocks", "Scheduling", "File Systems", "Virtual Memory", "Threads", "Distributed Systems"],
+        "CN": ["OSI Model", "TCP/IP", "Routing", "Network Security", "DNS", "HTTP/HTTPS", "Socket Programming", "Wireless Networks"],
+        "DSA": ["Arrays", "Linked Lists", "Trees", "Graphs", "Dynamic Programming", "Sorting", "Searching", "Recursion"],
+        "AI": ["Search Algorithms", "Neural Networks", "ML Basics", "NLP", "Robotics", "Expert Systems", "Fuzzy Logic"]
+    },
+    "BLOOMS": ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"]
+}
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    return jsonify(CONFIG), 200
 
 @app.route("/api/auth/register", methods=["POST"])
 def register():
@@ -120,6 +136,65 @@ def upload_file():
         json.dump(data, f, indent=4)
 
     return jsonify({"message": "Uploaded successfully"})
+
+
+@app.route("/api/papers", methods=["GET"])
+def get_papers():
+    return jsonify(papers), 200
+
+
+@app.route("/api/papers/generate", methods=["POST"])
+def generate_paper():
+    data = request.get_json()
+    
+    subject = data.get("subject")
+    topics = data.get("topics")
+    blooms = data.get("blooms")
+    difficulty = data.get("difficulty")
+    
+    if not subject or not topics or not blooms or not difficulty:
+        return jsonify({"error": "Missing required fields"}), 400
+        
+    paper_id = len(papers) + 1
+    
+    # Mock Paper Generation Logic
+    # In a real system, this would use NLP/TextExtractor to generate questions
+    mock_paper = {
+        "id": paper_id,
+        "subject": subject,
+        "title": f"{subject} {difficulty} Assessment",
+        "date": "2024-02-09", # Dynamic date ideally
+        "marks": 50,
+        "duration": "90 Mins",
+        "sections": [
+            {
+                "name": "Section A: Multiple Choice Questions",
+                "marks": 10,
+                "questions": [
+                    {"id": 1, "text": f"Which of the following relates to {topics[0] if topics else 'Topic'}?", "options": ["A", "B", "C", "D"]}
+                ]
+            },
+            {
+                "name": "Section B: Short Answer Questions",
+                "marks": 20,
+                "questions": [
+                    {"id": 2, "text": f"Explain the concept of {topics[1] if len(topics)>1 else 'Topic'} in detail.", "marks": 5}
+                ]
+            }
+        ]
+    }
+    
+    papers.append(mock_paper)
+    
+    return jsonify({"message": "Paper generated successfully", "paperId": paper_id}), 201
+
+
+@app.route("/api/papers/<int:paper_id>", methods=["GET"])
+def get_paper(paper_id):
+    paper = next((p for p in papers if p["id"] == paper_id), None)
+    if not paper:
+        return jsonify({"error": "Paper not found"}), 404
+    return jsonify(paper), 200
 
 
 if __name__ == "__main__":

@@ -1,14 +1,27 @@
 
 import { Link, useNavigate } from "react-router-dom";
-
-const MOCK_PAPERS = [
-    { id: 1, subject: "DBMS", title: "Mid-Term Examination", date: "2023-10-15" },
-    { id: 2, subject: "Operating Systems", title: "Final Semester Paper", date: "2023-12-10" },
-    { id: 3, subject: "Computer Networks", title: "Unit Test 1", date: "2024-01-20" },
-];
+import { useState, useEffect } from "react";
+import { getAllPapers } from "../services/paperService.js";
 
 function Dashboard() {
     const navigate = useNavigate();
+    const [papers, setPapers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPapers = async () => {
+            try {
+                const data = await getAllPapers();
+                setPapers(data);
+            } catch (err) {
+                console.error("Failed to fetch papers:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPapers();
+    }, []);
 
     return (
         <div className="paper-container animate-fade-in">
@@ -17,7 +30,7 @@ function Dashboard() {
                 <h1 className="title" style={{ textAlign: "left", fontSize: "1.8rem", marginBottom: "0.5rem" }}>
                     Dashboard
                 </h1>
-                <p className="text-muted">Welcome back, Professor!</p>
+                <p className="text-muted">Welcome back, Srashti!</p>
 
                 <div style={{ marginTop: "1.5rem" }}>
                     <button
@@ -37,47 +50,52 @@ function Dashboard() {
                 </h2>
 
                 <div className="papers-list">
-                    {MOCK_PAPERS.map((paper) => (
-                        <div
-                            key={paper.id}
-                            className="paper-item"
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                padding: "1rem",
-                                background: "rgba(255, 255, 255, 0.05)",
-                                border: "1px solid var(--border)",
-                                borderRadius: "12px",
-                                marginBottom: "1rem",
-                                transition: "all 0.2s ease"
-                            }}
-                        >
-                            <div>
-                                <h3 style={{ fontSize: "1.1rem", marginBottom: "0.25rem", fontWeight: "600" }}>
-                                    {paper.subject}
-                                </h3>
-                                <p className="text-muted" style={{ fontSize: "0.9rem" }}>
-                                    {paper.title} • {paper.date}
-                                </p>
-                            </div>
-
-                            <Link
-                                to={`/paper/${paper.id}`}
-                                className="btn-primary"
+                    {loading ? (
+                        <p className="text-muted">Loading papers...</p>
+                    ) : papers.length === 0 ? (
+                        <p className="text-muted">No papers found. Create one to get started!</p>
+                    ) : (
+                        papers.map((paper) => (
+                            <div
+                                key={paper.id}
+                                className="paper-item"
                                 style={{
-                                    width: "auto",
-                                    padding: "0.5rem 1rem",
-                                    fontSize: "0.9rem",
-                                    marginTop: 0,
-                                    textDecoration: "none",
-                                    display: "inline-block"
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    padding: "1rem",
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "12px",
+                                    marginBottom: "1rem",
+                                    transition: "all 0.2s ease"
                                 }}
                             >
-                                View
-                            </Link>
-                        </div>
-                    ))}
+                                <div>
+                                    <h3 style={{ fontSize: "1.1rem", marginBottom: "0.25rem", fontWeight: "600" }}>
+                                        {paper.subject}
+                                    </h3>
+                                    <p className="text-muted" style={{ fontSize: "0.9rem" }}>
+                                        {paper.title} • {paper.date}
+                                    </p>
+                                </div>
+
+                                <Link
+                                    to={`/paper/${paper.id}`}
+                                    className="btn-primary"
+                                    style={{
+                                        width: "auto",
+                                        padding: "0.5rem 1rem",
+                                        fontSize: "0.9rem",
+                                        marginTop: 0,
+                                        textDecoration: "none",
+                                        display: "inline-block"
+                                    }}
+                                >
+                                    View
+                                </Link>
+                            </div>
+                        ))}
                 </div>
             </div>
         </div>

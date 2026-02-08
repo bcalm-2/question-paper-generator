@@ -1,9 +1,30 @@
 
 import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { getPaperById } from "../services/paperService.js";
 
 function ViewPaper() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [paper, setPaper] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPaper = async () => {
+            try {
+                const data = await getPaperById(id);
+                setPaper(data);
+            } catch (err) {
+                console.error("Failed to fetch paper:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPaper();
+    }, [id]);
+
+    if (loading) return <div className="paper-container"><p className="text-muted">Loading paper...</p></div>;
+    if (!paper) return <div className="paper-container"><p className="text-muted">Paper not found.</p></div>;
 
     return (
         <div className="paper-container animate-fade-in">
@@ -27,24 +48,44 @@ function ViewPaper() {
 
                 <h1 className="title" style={{ textAlign: "left" }}>Paper Details</h1>
 
-                <div style={{ marginTop: "2rem" }}>
-                    <p className="section-title">Paper ID</p>
-                    <p style={{ fontSize: "1.2rem" }}>#{id}</p>
+                <div>
+                    <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{paper.title}</h2>
+                    <p className="text-muted">Subject: {paper.subject}</p>
                 </div>
-
-                <div style={{ marginTop: "2rem", padding: "2rem", background: "rgba(0,0,0,0.2)", borderRadius: "8px", textAlign: "center" }}>
-                    <p className="text-muted">
-                        Paper preview content would go here. <br />
-                        (Title, Questions, Total Marks, etc.)
-                    </p>
-                </div>
-
-                <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-                    <button className="btn-primary" style={{ width: "auto" }}>Download PDF</button>
-                    <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
+                <div style={{ textAlign: "right" }}>
+                    <p style={{ fontWeight: "bold", fontSize: "1.1rem" }}>Max Marks: {paper.marks}</p>
+                    <p className="text-muted">Duration: {paper.duration}</p>
                 </div>
             </div>
+
+            <div className="paper-content">
+                {paper.sections && paper.sections.map((section, idx) => (
+                    <div key={idx} style={{ marginBottom: "2rem" }}>
+                        <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
+                        {section.questions.map((q) => (
+                            <div key={q.id} style={{ marginBottom: "1rem" }}>
+                                <p style={{ marginBottom: "0.5rem" }}>{q.id}. {q.text} {q.options && "(Multiple Choice)"}</p>
+                                {q.options && (
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
+                                        {q.options.map((opt, i) => (
+                                            <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
         </div>
+                </div >
+
+        <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
+            <button className="btn-primary" style={{ width: "auto" }}>Download PDF</button>
+            <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
+        </div>
+            </div >
+        </div >
     );
 }
 

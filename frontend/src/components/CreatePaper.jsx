@@ -1,21 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
-
-const SUBJECT_TOPICS = {
-  DBMS: ["Normalization", "ER Model", "Transactions", "SQL", "Indexing", "Relational Algebra"],
-  OS: ["Processes", "Memory Management", "Deadlocks", "Scheduling", "File Systems", "Virtual Memory"],
-  CN: ["OSI Model", "TCP/IP", "Routing", "Network Security", "DNS", "HTTP/HTTPS"]
-};
-
-const BLOOMS = [
-  "Remember",
-  "Understand",
-  "Apply",
-  "Analyze",
-  "Evaluate",
-  "Create"
-];
+import { getConfig, generatePaper } from "../services/paperService.js";
 
 function CreatePaper() {
   const navigate = useNavigate();
@@ -23,6 +9,26 @@ function CreatePaper() {
   const [topics, setTopics] = useState([]);
   const [blooms, setBlooms] = useState([]);
   const [difficulty, setDifficulty] = useState("");
+
+  const [config, setConfig] = useState({ SUBJECT_TOPICS: {}, BLOOMS: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const data = await getConfig();
+        setConfig(data);
+      } catch (err) {
+        console.error("Failed to load config:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const SUBJECT_TOPICS = config.SUBJECT_TOPICS;
+  const BLOOMS = config.BLOOMS;
 
   const toggle = (value, list, setList) => {
     setList(
@@ -32,10 +38,16 @@ function CreatePaper() {
     );
   };
 
-  const submitHandler = () => {
+  const submitHandler = async () => {
     const data = { subject, topics, blooms, difficulty };
-    console.log("Data sent to backend:", data);
-    alert("Request generated successfully!");
+    try {
+      const result = await generatePaper(data);
+      alert("Paper generated successfully!");
+      navigate(`/paper/${result.paperId}`);
+    } catch (err) {
+      console.error("Generation failed:", err);
+      alert("Failed to generate paper. Please try again.");
+    }
   };
 
   const disabled =
