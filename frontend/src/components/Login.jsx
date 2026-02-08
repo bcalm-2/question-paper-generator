@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { login } from "../services/authService";
 
 function Login({ switchToRegister }) {
   const navigate = useNavigate();
@@ -8,7 +9,7 @@ function Login({ switchToRegister }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -17,8 +18,14 @@ function Login({ switchToRegister }) {
     }
 
     setError("");
-    console.log("Login Data:", { email, password });
-    navigate("/dashboard");
+    setError("");
+
+    try {
+      await login({ email, password });
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.error || "Login failed. Please try again.");
+    }
   };
 
   return (

@@ -1,9 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
+from flask_cors import CORS
+import os
+import json
 
 app = Flask(__name__)
 
 users = []
+sessions = {}
 
 @app.route("/health", methods=["GET"])
 def health():
@@ -24,7 +29,7 @@ def register():
         if u["email"] == email:
             return jsonify({"error": "User already exists"}), 400
 
-    hashed_password = generate_password_hash(password)
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
     user = {
         "id": len(users) + 1,
@@ -35,7 +40,12 @@ def register():
 
     users.append(user)
 
-    return jsonify({"message": "User registered successfully"}), 201
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = user["id"]
+
+    response = make_response(jsonify({"message": "User registered successfully"}), 201)
+    response.headers["X-Session-Id"] = session_id
+    return response
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -50,14 +60,19 @@ def login():
 
     for u in users:
         if u["email"] == email and check_password_hash(u["password"], password):
-            return jsonify({
+            session_id = str(uuid.uuid4())
+            sessions[session_id] = u["id"]
+
+            response = make_response(jsonify({
                 "message": "Login successful",
                 "user": {
                     "id": u["id"],
                     "name": u["name"],
                     "email": u["email"]
                 }
-            }), 200
+            }), 200)
+            response.headers["X-Session-Id"] = session_id
+            return response
 
     return jsonify({"error": "Invalid credentials"}), 401
 

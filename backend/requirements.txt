@@ -3,4 +3,4 @@ nltk
 flask
 PyJWT
 flask
-werkzeug
+werkzeugflask-cors

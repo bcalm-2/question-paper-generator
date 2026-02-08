@@ -1,7 +1,10 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { register } from "../services/authService";
 
 function Register({ switchToLogin }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -11,7 +14,7 @@ function Register({ switchToLogin }) {
 
   const [error, setError] = useState("");
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.password) {
@@ -20,8 +23,14 @@ function Register({ switchToLogin }) {
     }
 
     setError("");
-    console.log("Register Data:", form);
+    setError("");
 
+    try {
+      await register(form);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.error || "Registration failed. Please try again.");
+    }
   };
 
   return (
