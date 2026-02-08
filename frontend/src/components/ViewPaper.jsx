@@ -48,44 +48,47 @@ function ViewPaper() {
 
                 <h1 className="title" style={{ textAlign: "left" }}>Paper Details</h1>
 
-                <div>
-                    <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{paper.title}</h2>
-                    <p className="text-muted">Subject: {paper.subject}</p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                    <p style={{ fontWeight: "bold", fontSize: "1.1rem" }}>Max Marks: {paper.marks}</p>
-                    <p className="text-muted">Duration: {paper.duration}</p>
-                </div>
-            </div>
-
-            <div className="paper-content">
-                {paper.sections && paper.sections.map((section, idx) => (
-                    <div key={idx} style={{ marginBottom: "2rem" }}>
-                        <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
-                        {section.questions.map((q) => (
-                            <div key={q.id} style={{ marginBottom: "1rem" }}>
-                                <p style={{ marginBottom: "0.5rem" }}>{q.id}. {q.text} {q.options && "(Multiple Choice)"}</p>
-                                {q.options && (
-                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
-                                        {q.options.map((opt, i) => (
-                                            <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
-                                        ))}
-                                    </div>
-                                )}
+                <div style={{ marginTop: "2rem", textAlign: "left" }}>
+                    <div style={{ background: "rgba(255,255,255,0.05)", padding: "2rem", borderRadius: "8px" }}>
+                        <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between" }}>
+                            <div>
+                                <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{paper.title}</h2>
+                                <p className="text-muted">Subject: {paper.subject}</p>
                             </div>
-                        ))}
+                            <div style={{ textAlign: "right" }}>
+                                <p style={{ fontWeight: "bold", fontSize: "1.1rem" }}>Max Marks: {paper.marks}</p>
+                                <p className="text-muted">Duration: {paper.duration}</p>
+                            </div>
+                        </div>
+
+                        <div className="paper-content">
+                            {paper.sections && paper.sections.map((section, idx) => (
+                                <div key={idx} style={{ marginBottom: "2rem" }}>
+                                    <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
+                                    {section.questions.map((q) => (
+                                        <div key={q.id} style={{ marginBottom: "1rem" }}>
+                                            <p style={{ marginBottom: "0.5rem" }}>{q.id}. {q.text} {q.options && "(Multiple Choice)"}</p>
+                                            {q.options && (
+                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
+                                                    {q.options.map((opt, i) => (
+                                                        <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                ))}
+                </div>
+
+                <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
+                    <button className="btn-primary" style={{ width: "auto" }}>Download PDF</button>
+                    <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
+                </div>
             </div>
         </div>
-                </div >
-
-        <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-            <button className="btn-primary" style={{ width: "auto" }}>Download PDF</button>
-            <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
-        </div>
-            </div >
-        </div >
     );
 }
 

@@ -95,7 +95,7 @@ function Dashboard() {
                                     View
                                 </Link>
                             </div>
-                        ))}
+                        )))}
                 </div>
             </div>
         </div>
