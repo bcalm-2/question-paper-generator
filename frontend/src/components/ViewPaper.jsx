@@ -1,13 +1,27 @@
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getPaperById } from "../services/paperService.js";
+import html2pdf from "html2pdf.js";
 
 function ViewPaper() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [paper, setPaper] = useState(null);
     const [loading, setLoading] = useState(true);
+    const paperRef = useRef();
+
+    const handleDownload = () => {
+        const element = paperRef.current;
+        const opt = {
+            margin: 1,
+            filename: `${paper.subject.replace(/\s+/g, '_')}_Paper.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    };
 
     useEffect(() => {
         const fetchPaper = async () => {
@@ -49,7 +63,7 @@ function ViewPaper() {
                 <h1 className="title" style={{ textAlign: "left" }}>Paper Details</h1>
 
                 <div style={{ marginTop: "2rem", textAlign: "left" }}>
-                    <div style={{ background: "rgba(255,255,255,0.05)", padding: "2rem", borderRadius: "8px" }}>
+                    <div ref={paperRef} style={{ background: "rgba(255,255,255,0.05)", padding: "2rem", borderRadius: "8px", color: "var(--text)" }}>
                         <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between" }}>
                             <div>
                                 <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{paper.title}</h2>
@@ -84,7 +98,7 @@ function ViewPaper() {
                 </div>
 
                 <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-                    <button className="btn-primary" style={{ width: "auto" }}>Download PDF</button>
+                    <button className="btn-primary" style={{ width: "auto" }} onClick={handleDownload}>Download PDF</button>
                     <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
                 </div>
             </div>
