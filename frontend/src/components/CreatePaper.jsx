@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
-import { getConfig, generatePaper } from "../services/paperService.js";
+import { getConfig, generatePaper, uploadFile } from "../services/paperService.js";
 
 function CreatePaper() {
   const navigate = useNavigate();
@@ -12,6 +12,8 @@ function CreatePaper() {
 
   const [config, setConfig] = useState({ SUBJECT_TOPICS: {}, BLOOMS: [] });
   const [loading, setLoading] = useState(true);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -36,6 +38,28 @@ function CreatePaper() {
         ? list.filter(i => i !== value)
         : [...list, value]
     );
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!subject) {
+      alert("Please select a subject first.");
+      e.target.value = null;
+      return;
+    }
+
+    setUploadStatus("Uploading...");
+    try {
+      await uploadFile(file, subject);
+      setUploadedFile(file.name);
+      setUploadStatus("Upload Successful");
+    } catch (err) {
+      console.error("Upload failed", err);
+      setUploadStatus("Upload Failed");
+      setUploadedFile(null);
+    }
   };
 
   const submitHandler = async () => {
@@ -105,6 +129,44 @@ function CreatePaper() {
                   {topic}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* File Upload Section */}
+        {subject && (
+          <div className="form-section animate-fade-in">
+            <label className="section-title">Reference Material (Optional)</label>
+            <div style={{
+              border: '2px dashed var(--border)',
+              padding: '2rem',
+              borderRadius: '8px',
+              textAlign: 'center',
+              background: 'rgba(255,255,255,0.02)'
+            }}>
+              <input
+                type="file"
+                accept=".pdf,.txt"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" style={{ cursor: 'pointer', display: 'block' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📄</div>
+                <p style={{ marginBottom: '0.5rem' }}>Click to upload PDF or TXT</p>
+                <p className="text-muted" style={{ fontSize: '0.8rem' }}>
+                  {uploadedFile ? `Selected: ${uploadedFile}` : "Supported formats: .pdf, .txt"}
+                </p>
+              </label>
+              {uploadStatus && (
+                <p style={{
+                  marginTop: '1rem',
+                  color: uploadStatus.includes("Failed") ? "#ef4444" : "#22c55e",
+                  fontSize: '0.9rem'
+                }}>
+                  {uploadStatus}
+                </p>
+              )}
             </div>
           </div>
         )}

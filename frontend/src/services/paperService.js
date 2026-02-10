@@ -55,9 +55,27 @@ export const generatePaper = async (data) => {
     }
 };
 
+export const uploadFile = async (file, subject) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("subject", subject);
+
+    try {
+        const response = await api.post("/upload", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response ? error.response.data : error;
+    }
+};
+
 export default {
     getConfig,
     getAllPapers,
     getPaperById,
-    generatePaper
+    generatePaper,
+    uploadFile
 };
