@@ -32,6 +32,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/create-paper" element={<CreatePaper />} />
+          <Route path="/edit-paper/:id" element={<CreatePaper />} />
           <Route path="/paper/:id" element={<ViewPaper />} />
         </Routes>
       </div>

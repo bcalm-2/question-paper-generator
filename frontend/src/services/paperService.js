@@ -72,10 +72,20 @@ export const uploadFile = async (file, subject) => {
     }
 };
 
+export const updatePaper = async (id, data) => {
+    try {
+        const response = await api.put(`/papers/${id}`, data);
+        return response.data;
+    } catch (error) {
+        throw error.response ? error.response.data : error;
+    }
+};
+
 export default {
     getConfig,
     getAllPapers,
     getPaperById,
     generatePaper,
-    uploadFile
+    uploadFile,
+    updatePaper
 };

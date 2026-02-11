@@ -99,7 +99,13 @@ function ViewPaper() {
 
                 <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
                     <button className="btn-primary" style={{ width: "auto" }} onClick={handleDownload}>Download PDF</button>
-                    <button className="btn-primary" style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}>Edit</button>
+                    <button
+                        className="btn-primary"
+                        style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}
+                        onClick={() => navigate(`/edit-paper/${id}`)}
+                    >
+                        Edit
+                    </button>
                 </div>
             </div>
         </div>

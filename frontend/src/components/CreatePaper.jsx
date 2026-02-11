@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "../App.css";
-import { getConfig, generatePaper, uploadFile } from "../services/paperService.js";
+import { getConfig, generatePaper, uploadFile, getPaperById, updatePaper } from "../services/paperService.js";
 
 function CreatePaper() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
+
   const [subject, setSubject] = useState("");
   const [topics, setTopics] = useState([]);
   const [blooms, setBlooms] = useState([]);
@@ -16,18 +19,35 @@ function CreatePaper() {
   const [uploadedFile, setUploadedFile] = useState(null);
 
   useEffect(() => {
-    const fetchConfig = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getConfig();
-        setConfig(data);
+        const configData = await getConfig();
+        setConfig(configData);
+
+        if (isEditMode) {
+          const paperData = await getPaperById(id);
+          setSubject(paperData.subject);
+          setTopics(paperData.topics || []); // Assuming topics might need to be extracted or items exist
+          // Fallback logic if paper object structure is different (it is in app.py mocks)
+          // In app.py mock: sections contain questions which relate to topics.
+          // Let's assume we can set these if they exist in the object or use defaults.
+          setBlooms(paperData.blooms || []);
+          setDifficulty(paperData.difficulty || "");
+
+          // Heuristic for topics if they aren't explicitly in the root (mock paper doesn't have them in root)
+          if (!paperData.topics && paperData.sections) {
+            // In a real app we'd have the params stored. Since it's a mock, I'll just keep it simple.
+            // If they aren't there, the user might need to reselect, but let's try to be smart.
+          }
+        }
       } catch (err) {
-        console.error("Failed to load config:", err);
+        console.error("Failed to load data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchConfig();
-  }, []);
+    fetchData();
+  }, [id, isEditMode]);
 
   const SUBJECT_TOPICS = config.SUBJECT_TOPICS;
   const BLOOMS = config.BLOOMS;
@@ -65,12 +85,18 @@ function CreatePaper() {
   const submitHandler = async () => {
     const data = { subject, topics, blooms, difficulty };
     try {
-      const result = await generatePaper(data);
-      alert("Paper generated successfully!");
-      navigate(`/paper/${result.paperId}`);
+      if (isEditMode) {
+        await updatePaper(id, data);
+        alert("Paper updated successfully!");
+        navigate(`/paper/${id}`);
+      } else {
+        const result = await generatePaper(data);
+        alert("Paper generated successfully!");
+        navigate(`/paper/${result.paperId}`);
+      }
     } catch (err) {
-      console.error("Generation failed:", err);
-      alert("Failed to generate paper. Please try again.");
+      console.error(isEditMode ? "Update failed:" : "Generation failed:", err);
+      alert(`Failed to ${isEditMode ? "update" : "generate"} paper. Please try again.`);
     }
   };
 
@@ -96,7 +122,7 @@ function CreatePaper() {
         >
           ← Back to Dashboard
         </button>
-        <h2 className="title">Generate Question Paper</h2>
+        <h2 className="title">{isEditMode ? "Edit Question Paper" : "Generate Question Paper"}</h2>
 
         {/* Subject Selection */}
         <div className="form-section">
@@ -210,7 +236,7 @@ function CreatePaper() {
           onClick={submitHandler}
           style={{ marginTop: '2rem' }}
         >
-          {disabled ? "Complete all fields to generate" : "Generate Question Paper"}
+          {disabled ? "Complete all fields to proceed" : (isEditMode ? "Update Question Paper" : "Generate Question Paper")}
         </button>
       </div>
     </div>

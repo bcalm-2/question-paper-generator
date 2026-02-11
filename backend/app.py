@@ -189,6 +189,53 @@ def generate_paper():
     return jsonify({"message": "Paper generated successfully", "paperId": paper_id}), 201
 
 
+@app.route("/api/papers/<int:paper_id>", methods=["PUT"])
+def update_paper(paper_id):
+    data = request.get_json()
+    
+    subject = data.get("subject")
+    topics = data.get("topics")
+    blooms = data.get("blooms")
+    difficulty = data.get("difficulty")
+    
+    if not subject or not topics or not blooms or not difficulty:
+        return jsonify({"error": "Missing required fields"}), 400
+        
+    paper_index = next((i for i, p in enumerate(papers) if p["id"] == paper_id), None)
+    if paper_index is None:
+        return jsonify({"error": "Paper not found"}), 404
+        
+    # Reuse mock generation logic to "update" the paper
+    updated_paper = {
+        "id": paper_id,
+        "subject": subject,
+        "title": f"{subject} {difficulty} Assessment",
+        "date": papers[paper_index].get("date", "2024-02-09"),
+        "marks": 50,
+        "duration": "90 Mins",
+        "sections": [
+            {
+                "name": "Section A: Multiple Choice Questions",
+                "marks": 10,
+                "questions": [
+                    {"id": 1, "text": f"Which of the following relates to {topics[0] if topics else 'Topic'}?", "options": ["A", "B", "C", "D"]}
+                ]
+            },
+            {
+                "name": "Section B: Short Answer Questions",
+                "marks": 20,
+                "questions": [
+                    {"id": 2, "text": f"Explain the concept of {topics[1] if len(topics)>1 else 'Topic'} in detail.", "marks": 5}
+                ]
+            }
+        ]
+    }
+    
+    papers[paper_index] = updated_paper
+    
+    return jsonify({"message": "Paper updated successfully", "paperId": paper_id}), 200
+
+
 @app.route("/api/papers/<int:paper_id>", methods=["GET"])
 def get_paper(paper_id):
     paper = next((p for p in papers if p["id"] == paper_id), None)
