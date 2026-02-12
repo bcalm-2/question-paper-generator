@@ -2,5 +2,7 @@ spacy
 nltk
 flask
 PyJWT
-flask
-werkzeugflask-cors
+flask-cors
+werkzeug
+PyPDF2
+python-docx

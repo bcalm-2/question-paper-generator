@@ -4,12 +4,21 @@ import uuid
 from flask_cors import CORS
 import os
 import json
+import random
+from text_extractor import TextExtractor
+from nlp_analyzer import NLPAnalyzer
+from bloom_classifier import BloomClassifier
 
 app = Flask(__name__)
 
 users = []
 sessions = {}
 papers = []
+
+# Initialize Analyzers
+extractor = TextExtractor()
+analyzer = NLPAnalyzer()
+classifier = BloomClassifier()
 
 CONFIG = {
     "SUBJECT_TOPICS": {
@@ -148,44 +157,102 @@ def generate_paper():
     data = request.get_json()
     
     subject = data.get("subject")
-    topics = data.get("topics")
-    blooms = data.get("blooms")
+    topics = data.get("topics", [])
+    blooms = data.get("blooms", [])
     difficulty = data.get("difficulty")
     
     if not subject or not topics or not blooms or not difficulty:
         return jsonify({"error": "Missing required fields"}), 400
         
+    # 1. Fetch relevant files for this subject from mapping.json
+    with open(MAPPING_FILE, "r") as f:
+        mapping = json.load(f)
+    
+    subject_files = [fname for fname, sub in mapping.items() if sub == subject]
+    
+    if not subject_files:
+        return jsonify({"error": f"No reference files found for subject {subject}. Please upload a file first."}), 400
+    
+    # Process the first file found
+    file_path = os.path.join(RESOURCE_FOLDER, subject_files[0])
+    try:
+        raw_text = extractor.extract(file_path)
+    except Exception as e:
+        return jsonify({"error": f"Failed to extract text from file: {str(e)}"}), 500
+        
+    analysis = analyzer.analyze(raw_text)
+    worthy_sentences = analysis["question_worthy_sentences"]
+    
+    # 2. Filter and Classify questions based on requested Blooms and Topics
+    potential_questions = []
+    for sent in worthy_sentences:
+        level = classifier.classify(sent)
+        # Check if sentence contains any of the selected topics (case-insensitive)
+        matches_topic = any(topic.lower() in sent.lower() for topic in topics)
+        
+        if matches_topic and level in blooms:
+            potential_questions.append({
+                "text": sent,
+                "level": level
+            })
+            
+    if not potential_questions:
+        # Fallback: if no perfect match, just take some worthy sentences
+        potential_questions = [{"text": sent, "level": classifier.classify(sent)} for sent in worthy_sentences[:10]]
+
+    # 3. Construct Paper Object
     paper_id = len(papers) + 1
     
-    # Mock Paper Generation Logic
-    # In a real system, this would use NLP/TextExtractor to generate questions
-    mock_paper = {
+    # Simple logic to split into MCQs and Short Answers
+    mcq_count = min(5, len(potential_questions))
+    mcqs = []
+    for i in range(mcq_count):
+        sent = potential_questions[i]["text"]
+        # Basic MCQ distractor generation using keywords found in doc
+        distractors = random.sample(analysis["keywords"], min(3, len(analysis["keywords"])))
+        while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
+        
+        mcqs.append({
+            "id": i + 1,
+            "text": sent,
+            "options": [sent.split()[-1].strip(".,!?;:")] + distractors
+        })
+        
+    short_answers = []
+    for i in range(mcq_count, min(10, len(potential_questions))):
+        short_answers.append({
+            "id": i + 1,
+            "text": potential_questions[i]["text"],
+            "marks": 5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10)
+        })
+
+    real_paper = {
         "id": paper_id,
         "subject": subject,
+        "topics": topics,
+        "blooms": blooms,
+        "difficulty": difficulty,
         "title": f"{subject} {difficulty} Assessment",
-        "date": "2024-02-09", # Dynamic date ideally
-        "marks": 50,
+        "date": "2024-02-12",
+        "marks": (len(mcqs) * 2) + (len(short_answers) * (5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10))),
         "duration": "90 Mins",
-        "sections": [
-            {
-                "name": "Section A: Multiple Choice Questions",
-                "marks": 10,
-                "questions": [
-                    {"id": 1, "text": f"Which of the following relates to {topics[0] if topics else 'Topic'}?", "options": ["A", "B", "C", "D"]}
-                ]
-            },
-            {
-                "name": "Section B: Short Answer Questions",
-                "marks": 20,
-                "questions": [
-                    {"id": 2, "text": f"Explain the concept of {topics[1] if len(topics)>1 else 'Topic'} in detail.", "marks": 5}
-                ]
-            }
-        ]
+        "sections": []
     }
     
-    papers.append(mock_paper)
+    if mcqs:
+        real_paper["sections"].append({
+            "name": "Section A: Multiple Choice Questions",
+            "marks": len(mcqs) * 2,
+            "questions": mcqs
+        })
+    if short_answers:
+        real_paper["sections"].append({
+            "name": "Section B: Short Answer Questions",
+            "marks": real_paper["marks"] - (len(mcqs) * 2),
+            "questions": short_answers
+        })
     
+    papers.append(real_paper)
     return jsonify({"message": "Paper generated successfully", "paperId": paper_id}), 201
 
 
@@ -194,8 +261,8 @@ def update_paper(paper_id):
     data = request.get_json()
     
     subject = data.get("subject")
-    topics = data.get("topics")
-    blooms = data.get("blooms")
+    topics = data.get("topics", [])
+    blooms = data.get("blooms", [])
     difficulty = data.get("difficulty")
     
     if not subject or not topics or not blooms or not difficulty:
@@ -205,34 +272,81 @@ def update_paper(paper_id):
     if paper_index is None:
         return jsonify({"error": "Paper not found"}), 404
         
-    # Reuse mock generation logic to "update" the paper
+    # 1. Fetch relevant files for this subject
+    with open(MAPPING_FILE, "r") as f:
+        mapping = json.load(f)
+    
+    subject_files = [fname for fname, sub in mapping.items() if sub == subject]
+    
+    if not subject_files:
+        return jsonify({"error": f"No reference files found for subject {subject}"}), 400
+    
+    file_path = os.path.join(RESOURCE_FOLDER, subject_files[0])
+    try:
+        raw_text = extractor.extract(file_path)
+    except Exception as e:
+        return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
+        
+    analysis = analyzer.analyze(raw_text)
+    worthy_sentences = analysis["question_worthy_sentences"]
+    
+    potential_questions = []
+    for sent in worthy_sentences:
+        level = classifier.classify(sent)
+        matches_topic = any(topic.lower() in sent.lower() for topic in topics)
+        if matches_topic and level in blooms:
+            potential_questions.append({"text": sent, "level": level})
+            
+    if not potential_questions:
+        potential_questions = [{"text": sent, "level": classifier.classify(sent)} for sent in worthy_sentences[:10]]
+
+    mcq_count = min(5, len(potential_questions))
+    mcqs = []
+    for i in range(mcq_count):
+        sent = potential_questions[i]["text"]
+        distractors = random.sample(analysis["keywords"], min(3, len(analysis["keywords"])))
+        while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
+        mcqs.append({
+            "id": i + 1,
+            "text": sent,
+            "options": [sent.split()[-1].strip(".,!?;:")] + distractors
+        })
+        
+    short_answers = []
+    for i in range(mcq_count, min(10, len(potential_questions))):
+        short_answers.append({
+            "id": i + 1,
+            "text": potential_questions[i]["text"],
+            "marks": 5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10)
+        })
+
     updated_paper = {
         "id": paper_id,
         "subject": subject,
+        "topics": topics,
+        "blooms": blooms,
+        "difficulty": difficulty,
         "title": f"{subject} {difficulty} Assessment",
-        "date": papers[paper_index].get("date", "2024-02-09"),
-        "marks": 50,
+        "date": papers[paper_index].get("date", "2024-02-12"),
+        "marks": (len(mcqs) * 2) + (len(short_answers) * (5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10))),
         "duration": "90 Mins",
-        "sections": [
-            {
-                "name": "Section A: Multiple Choice Questions",
-                "marks": 10,
-                "questions": [
-                    {"id": 1, "text": f"Which of the following relates to {topics[0] if topics else 'Topic'}?", "options": ["A", "B", "C", "D"]}
-                ]
-            },
-            {
-                "name": "Section B: Short Answer Questions",
-                "marks": 20,
-                "questions": [
-                    {"id": 2, "text": f"Explain the concept of {topics[1] if len(topics)>1 else 'Topic'} in detail.", "marks": 5}
-                ]
-            }
-        ]
+        "sections": []
     }
     
-    papers[paper_index] = updated_paper
+    if mcqs:
+        updated_paper["sections"].append({
+            "name": "Section A: Multiple Choice Questions",
+            "marks": len(mcqs) * 2,
+            "questions": mcqs
+        })
+    if short_answers:
+        updated_paper["sections"].append({
+            "name": "Section B: Short Answer Questions",
+            "marks": updated_paper["marks"] - (len(mcqs) * 2),
+            "questions": short_answers
+        })
     
+    papers[paper_index] = updated_paper
     return jsonify({"message": "Paper updated successfully", "paperId": paper_id}), 200
 
 
