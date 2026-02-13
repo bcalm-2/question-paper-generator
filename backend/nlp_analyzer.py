@@ -10,70 +10,100 @@ class NLPAnalyzer:
         doc = self.nlp(text)
 
         sentences = []
-        pos_tags = []
-        token_tags = []
         entities = []
-        noun_chunks = []
-        keywords = []
         question_worthy = []
 
-        for token in doc:
-            pos_tags.append({
-                "text": token.text,
-                "pos": token.pos_
-            })
-
-            token_tags.append({
-                "text": token.text,
-                "tag": token.tag_
-            })
-
+        # Extract entities for better context
         for ent in doc.ents:
             entities.append({
                 "text": ent.text,
                 "label": ent.label_
             })
 
-        for chunk in doc.noun_chunks:
-            noun_chunks.append(chunk.text)
-
+        # Process sentences
         for sent in doc.sents:
             sent_text = sent.text.strip()
+            if len(sent_text) < 20: continue # Skip too short sentences
 
-            is_question_worthy = self._is_question_worthy(sent)
+            is_worthy, category = self._is_question_worthy(sent)
 
-            sentences.append({
-                "text": sent_text,
-                "question_worthy": is_question_worthy
-            })
+            if is_worthy:
+                formatted_q = self._format_as_question(sent, category)
+                sentences.append({
+                    "text": sent_text,
+                    "question": formatted_q,
+                    "category": category
+                })
+                question_worthy.append({
+                    "original": sent_text,
+                    "question": formatted_q,
+                    "category": category
+                })
 
-            if is_question_worthy:
-                question_worthy.append(sent_text)
-
-        words = [
+        # Enhanced keyword extraction (nouns and proper nouns are better for distractors)
+        keywords = [
             token.lemma_.lower()
             for token in doc
-            if token.is_alpha and not token.is_stop
+            if token.is_alpha and not token.is_stop and token.pos_ in ["NOUN", "PROPN"]
         ]
-
-        freq = Counter(words)
-        keywords = [w for w, _ in freq.most_common(10)]
+        freq = Counter(keywords)
+        top_keywords = [w for w, _ in freq.most_common(20)]
 
         return {
-            "sentences": sentences,
-            "pos_tags": pos_tags,
-            "token_tags": token_tags,
             "entities": entities,
-            "keywords": keywords,
-            "noun_chunks": noun_chunks,
+            "keywords": top_keywords,
             "question_worthy_sentences": question_worthy
         }
 
     def _is_question_worthy(self, sent):
-        important_verbs = {"is", "are", "was", "were", "define", "explain", "describe", "compare"}
+        """
+        Determines if a sentence is suitable for generating a question.
+        Returns (bool, category)
+        """
+        text = sent.text.lower()
+        
+        # 1. Definition patterns
+        if any(w in text for w in [" is a ", " is the ", " refers to ", " is defined as "]):
+            return True, "definition"
+        
+        # 2. Process/Function patterns
+        if any(w in text for w in [" used for ", " responsible for ", " provides ", " allows "]):
+            return True, "function"
+            
+        # 3. Comparison
+        if any(w in text for w in [" differ from ", " compared to ", " unlike ", " similar to "]):
+            return True, "comparison"
 
-        has_entity = any(ent for ent in sent.ents)
-        has_verb = any(tok.lemma_.lower() in important_verbs for tok in sent)
-        long_sentence = len(sent) > 6
+        # 4. Importance/Core concepts
+        important_verbs = {"manage", "control", "perform", "ensure", "handle", "execute"}
+        if any(tok.lemma_.lower() in important_verbs for tok in sent):
+            return True, "process"
 
-        return has_entity or has_verb or long_sentence
+        return False, None
+
+    def _format_as_question(self, sent, category):
+        """
+        Attempts to transform a sentence into a question format.
+        """
+        text = sent.text.strip()
+        if text.endswith("."):
+            text = text[:-1]
+
+        if category == "definition":
+            # Try to extract the subject
+            for chunk in sent.noun_chunks:
+                return f"Explain the concept of {chunk.text}."
+            return f"What is meant by: {text}?"
+            
+        elif category == "function":
+            for chunk in sent.noun_chunks:
+                return f"Describe the function of {chunk.text}."
+            return f"Describe the function of the following: {text}."
+            
+        elif category == "comparison":
+            return f"Compare and contrast the elements mentioned here: {text}."
+            
+        elif category == "process":
+            return f"Explain the process described: {text}."
+
+        return f"Discuss: {text}."

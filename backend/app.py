@@ -181,24 +181,31 @@ def generate_paper():
         return jsonify({"error": f"Failed to extract text from file: {str(e)}"}), 500
         
     analysis = analyzer.analyze(raw_text)
-    worthy_sentences = analysis["question_worthy_sentences"]
+    worthy_data = analysis["question_worthy_sentences"]
     
     # 2. Filter and Classify questions based on requested Blooms and Topics
     potential_questions = []
-    for sent in worthy_sentences:
+    for data in worthy_data:
+        sent = data["original"]
+        question_text = data["question"]
         level = classifier.classify(sent)
+        
         # Check if sentence contains any of the selected topics (case-insensitive)
         matches_topic = any(topic.lower() in sent.lower() for topic in topics)
         
         if matches_topic and level in blooms:
             potential_questions.append({
-                "text": sent,
-                "level": level
+                "text": question_text,
+                "level": level,
+                "original": sent
             })
             
     if not potential_questions:
         # Fallback: if no perfect match, just take some worthy sentences
-        potential_questions = [{"text": sent, "level": classifier.classify(sent)} for sent in worthy_sentences[:10]]
+        potential_questions = [
+            {"text": d["question"], "level": classifier.classify(d["original"]), "original": d["original"]} 
+            for d in worthy_data[:10]
+        ]
 
     # 3. Construct Paper Object
     paper_id = len(papers) + 1
@@ -207,15 +214,25 @@ def generate_paper():
     mcq_count = min(5, len(potential_questions))
     mcqs = []
     for i in range(mcq_count):
-        sent = potential_questions[i]["text"]
+        item = potential_questions[i]
+        sent = item["text"]
+        original = item["original"]
+        
         # Basic MCQ distractor generation using keywords found in doc
-        distractors = random.sample(analysis["keywords"], min(3, len(analysis["keywords"])))
+        # Filter out keywords that might be in the original sentence to avoid confusion
+        available_keywords = [k for k in analysis["keywords"] if k.lower() not in original.lower()]
+        distractors = random.sample(available_keywords, min(3, len(available_keywords)))
         while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
+        
+        # Correct answer is usually a key word from the original sentence
+        # For now, let's just pick one noun from the original sentence as the "answer" 
+        # but since we are generating "Explain..." style questions, MCQs are a bit tricky.
+        # Let's pivot MCQs to be more about keyword identification if possible.
         
         mcqs.append({
             "id": i + 1,
             "text": sent,
-            "options": [sent.split()[-1].strip(".,!?;:")] + distractors
+            "options": random.sample([original.split()[-1].strip(".,!?;:")] + distractors, 4)
         })
         
     short_answers = []
@@ -287,29 +304,42 @@ def update_paper(paper_id):
     except Exception as e:
         return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
         
-    analysis = analyzer.analyze(raw_text)
-    worthy_sentences = analysis["question_worthy_sentences"]
+    worthy_data = analysis["question_worthy_sentences"]
     
     potential_questions = []
-    for sent in worthy_sentences:
+    for data in worthy_data:
+        sent = data["original"]
+        question_text = data["question"]
         level = classifier.classify(sent)
         matches_topic = any(topic.lower() in sent.lower() for topic in topics)
         if matches_topic and level in blooms:
-            potential_questions.append({"text": sent, "level": level})
+            potential_questions.append({
+                "text": question_text,
+                "level": level,
+                "original": sent
+            })
             
     if not potential_questions:
-        potential_questions = [{"text": sent, "level": classifier.classify(sent)} for sent in worthy_sentences[:10]]
+        potential_questions = [
+            {"text": d["question"], "level": classifier.classify(d["original"]), "original": d["original"]} 
+            for d in worthy_data[:10]
+        ]
 
     mcq_count = min(5, len(potential_questions))
     mcqs = []
     for i in range(mcq_count):
-        sent = potential_questions[i]["text"]
-        distractors = random.sample(analysis["keywords"], min(3, len(analysis["keywords"])))
+        item = potential_questions[i]
+        sent = item["text"]
+        original = item["original"]
+        
+        available_keywords = [k for k in analysis["keywords"] if k.lower() not in original.lower()]
+        distractors = random.sample(available_keywords, min(3, len(available_keywords)))
         while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
+        
         mcqs.append({
             "id": i + 1,
             "text": sent,
-            "options": [sent.split()[-1].strip(".,!?;:")] + distractors
+            "options": random.sample([original.split()[-1].strip(".,!?;:")] + distractors, 4)
         })
         
     short_answers = []
