@@ -9,6 +9,8 @@ from text_extractor import TextExtractor
 from nlp_analyzer import NLPAnalyzer
 from bloom_classifier import BloomClassifier
 
+from backend.question_generator import QuestionGeneratorService
+
 app = Flask(__name__)
 
 users = []
@@ -101,17 +103,17 @@ def login():
 
     return jsonify({"error": "Invalid credentials"}), 401
 
-CORS(app)
-
-RESOURCE_FOLDER = "resources"
-MAPPING_FILE = "mapping.json"
-
-if not os.path.exists(RESOURCE_FOLDER):
-    os.makedirs(RESOURCE_FOLDER)
-
-if not os.path.exists(MAPPING_FILE):
-    with open(MAPPING_FILE, "w") as f:
-        json.dump({}, f)
+# CORS(app)
+#
+# RESOURCE_FOLDER = "resources"
+# MAPPING_FILE = "mapping.json"
+#
+# if not os.path.exists(RESOURCE_FOLDER):
+#     os.makedirs(RESOURCE_FOLDER)
+#
+# if not os.path.exists(MAPPING_FILE):
+#     with open(MAPPING_FILE, "w") as f:
+#         json.dump({}, f)
 
 
 @app.route("/upload", methods=["POST"])
@@ -132,20 +134,36 @@ def upload_file():
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".txt")):
         return jsonify({"message": "Only PDF or TXT allowed"}), 400
 
-    save_path = os.path.join(RESOURCE_FOLDER, file.filename)
-    file.save(save_path)
-
-    # update mapping.json
-    with open(MAPPING_FILE, "r") as f:
-        data = json.load(f)
-
-    data[file.filename] = subject
-
-    with open(MAPPING_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    # save_path = os.path.join(RESOURCE_FOLDER, file.filename)
+    # file.save(save_path)
+    #
+    # # update mapping.json
+    # with open(MAPPING_FILE, "r") as f:
+    #     data = json.load(f)
+    #
+    # data[file.filename] = subject
+    #
+    # with open(MAPPING_FILE, "w") as f:
+    #     json.dump(data, f, indent=4)
 
     return jsonify({"message": "Uploaded successfully"})
 
+@app.route("/generate-questions", methods=["POST"])
+def generate_questions():
+    data = request.get_json()
+
+    if not data or "text" not in data:
+        return jsonify({"error": "Text is required"}), 400
+
+    result = QuestionGeneratorService.generate_questions(
+        processed_text=data["text"],
+        num_questions=data.get("count", 5)
+    )
+
+    if not result["success"]:
+        return jsonify({"error": result["error"]}), 500
+
+    return jsonify(result["data"]), 200
 
 @app.route("/api/papers", methods=["GET"])
 def get_papers():
