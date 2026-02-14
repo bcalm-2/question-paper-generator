@@ -1,8 +1,7 @@
 
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { getPaperById } from "../services/paperService.js";
-import html2pdf from "html2pdf.js";
+import { getPaperById, downloadPaperPDF } from "../services/paperService.js";
 
 function ViewPaper() {
     const { id } = useParams();
@@ -11,16 +10,13 @@ function ViewPaper() {
     const [loading, setLoading] = useState(true);
     const paperRef = useRef();
 
-    const handleDownload = () => {
-        const element = paperRef.current;
-        const opt = {
-            margin: 1,
-            filename: `${paper.subject.replace(/\s+/g, '_')}_Paper.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
+    const handleDownload = async () => {
+        try {
+            await downloadPaperPDF(id);
+        } catch (err) {
+            console.error("Download failed:", err);
+            alert("Failed to download PDF. Please try again.");
+        }
     };
 
     useEffect(() => {

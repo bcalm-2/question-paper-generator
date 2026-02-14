@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from flask_cors import CORS
@@ -8,6 +8,7 @@ import random
 from text_extractor import TextExtractor
 from nlp_analyzer import NLPAnalyzer
 from bloom_classifier import BloomClassifier
+from pdf_generator import PDFGenerator
 
 app = Flask(__name__)
 
@@ -19,6 +20,7 @@ papers = []
 extractor = TextExtractor()
 analyzer = NLPAnalyzer()
 classifier = BloomClassifier()
+pdf_gen = PDFGenerator()
 
 CONFIG = {
     "SUBJECT_TOPICS": {
@@ -380,12 +382,27 @@ def update_paper(paper_id):
     return jsonify({"message": "Paper updated successfully", "paperId": paper_id}), 200
 
 
-@app.route("/api/papers/<int:paper_id>", methods=["GET"])
-def get_paper(paper_id):
+@app.route("/api/papers/<int:paper_id>/download", methods=["GET"])
+def download_paper(paper_id):
     paper = next((p for p in papers if p["id"] == paper_id), None)
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
-    return jsonify(paper), 200
+        
+    try:
+        pdf_buffer = pdf_gen.generate_pdf(paper)
+        filename = f"{paper['subject']}_{paper['difficulty']}_Paper.pdf".replace(" ", "_")
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate PDF: {str(e)}"}), 500
+
+
+@app.route("/api/papers/<int:paper_id>", methods=["GET"])
 
 
 if __name__ == "__main__":

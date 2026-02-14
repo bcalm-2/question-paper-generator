@@ -81,11 +81,45 @@ export const updatePaper = async (id, data) => {
     }
 };
 
+export const downloadPaperPDF = async (id) => {
+    try {
+        const response = await api.get(`/papers/${id}/download`, {
+            responseType: 'blob'
+        });
+        
+        // Create a link element to trigger the download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Extract filename from header if possible, else use default
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = `Paper_${id}.pdf`;
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+            if (filenameMatch.length > 1) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        throw error.response ? error.response.data : error;
+    }
+};
+
 export default {
     getConfig,
     getAllPapers,
     getPaperById,
     generatePaper,
     uploadFile,
-    updatePaper
+    updatePaper,
+    downloadPaperPDF
 };
