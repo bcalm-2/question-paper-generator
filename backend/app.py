@@ -9,12 +9,16 @@ from text_extractor import TextExtractor
 from nlp_analyzer import NLPAnalyzer
 from bloom_classifier import BloomClassifier
 from pdf_generator import PDFGenerator
+from db_config import init_db, get_db_connection
+
+# Initialize Database
+init_db()
 
 app = Flask(__name__)
 
-users = []
+# In-memory session tracking remains for now (or could be moved to DB/Redis later)
 sessions = {}
-papers = []
+# papers list removed, will use DB
 
 # Initialize Analyzers
 extractor = TextExtractor()
@@ -52,23 +56,37 @@ def register():
     if not name or not email or not password:
         return jsonify({"error": "All fields are required"}), 400
 
-    for u in users:
-        if u["email"] == email:
-            return jsonify({"error": "User already exists"}), 400
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    # Check if user exists
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "User already exists"}), 400
 
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
-    user = {
-        "id": len(users) + 1,
-        "name": name,
-        "email": email,
-        "password": hashed_password
-    }
-
-    users.append(user)
+    try:
+        cursor.execute(
+            "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+            (name, email, hashed_password)
+        )
+        conn.commit()
+        user_id = cursor.lastrowid
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
     session_id = str(uuid.uuid4())
-    sessions[session_id] = user["id"]
+    sessions[session_id] = user_id
 
     response = make_response(jsonify({"message": "User registered successfully"}), 201)
     response.headers["X-Session-Id"] = session_id
@@ -85,21 +103,30 @@ def login():
     if not email or not password:
         return jsonify({"error": "Email and password required"}), 400
 
-    for u in users:
-        if u["email"] == email and check_password_hash(u["password"], password):
-            session_id = str(uuid.uuid4())
-            sessions[session_id] = u["id"]
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-            response = make_response(jsonify({
-                "message": "Login successful",
-                "user": {
-                    "id": u["id"],
-                    "name": u["name"],
-                    "email": u["email"]
-                }
-            }), 200)
-            response.headers["X-Session-Id"] = session_id
-            return response
+    if user and check_password_hash(user["password"], password):
+        session_id = str(uuid.uuid4())
+        sessions[session_id] = user["id"]
+
+        response = make_response(jsonify({
+            "message": "Login successful",
+            "user": {
+                "id": user["id"],
+                "name": user["name"],
+                "email": user["email"]
+            }
+        }), 200)
+        response.headers["X-Session-Id"] = session_id
+        return response
 
     return jsonify({"error": "Invalid credentials"}), 401
 
@@ -151,7 +178,17 @@ def upload_file():
 
 @app.route("/api/papers", methods=["GET"])
 def get_papers():
-    return jsonify(papers), 200
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+    
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM papers ORDER BY created_at DESC")
+    papers_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    return jsonify(papers_list), 200
 
 
 @app.route("/api/papers/generate", methods=["POST"])
@@ -187,9 +224,9 @@ def generate_paper():
     
     # 2. Filter and Classify questions based on requested Blooms and Topics
     potential_questions = []
-    for data in worthy_data:
-        sent = data["original"]
-        question_text = data["question"]
+    for qd in worthy_data:
+        sent = qd["original"]
+        question_text = qd["question"]
         level = classifier.classify(sent)
         
         # Check if sentence contains any of the selected topics (case-insensitive)
@@ -209,10 +246,7 @@ def generate_paper():
             for d in worthy_data[:10]
         ]
 
-    # 3. Construct Paper Object
-    paper_id = len(papers) + 1
-    
-    # Simple logic to split into MCQs and Short Answers
+    # Split into MCQs and Short Answers
     mcq_count = min(5, len(potential_questions))
     mcqs = []
     for i in range(mcq_count):
@@ -220,173 +254,149 @@ def generate_paper():
         sent = item["text"]
         original = item["original"]
         
-        # Basic MCQ distractor generation using keywords found in doc
-        # Filter out keywords that might be in the original sentence to avoid confusion
         available_keywords = [k for k in analysis["keywords"] if k.lower() not in original.lower()]
         distractors = random.sample(available_keywords, min(3, len(available_keywords)))
         while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
         
-        # Correct answer is usually a key word from the original sentence
-        # For now, let's just pick one noun from the original sentence as the "answer" 
-        # but since we are generating "Explain..." style questions, MCQs are a bit tricky.
-        # Let's pivot MCQs to be more about keyword identification if possible.
-        
+        # We store options as a comma separated string for now or just the text
+        # To keep it simple, let's just use the question text.
         mcqs.append({
-            "id": i + 1,
             "text": sent,
-            "options": random.sample([original.split()[-1].strip(".,!?;:")] + distractors, 4)
+            "level": item["level"]
         })
         
     short_answers = []
     for i in range(mcq_count, min(10, len(potential_questions))):
         short_answers.append({
-            "id": i + 1,
             "text": potential_questions[i]["text"],
+            "level": potential_questions[i]["level"],
             "marks": 5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10)
         })
 
-    real_paper = {
-        "id": paper_id,
-        "subject": subject,
-        "topics": topics,
-        "blooms": blooms,
-        "difficulty": difficulty,
-        "title": f"{subject} {difficulty} Assessment",
-        "date": "2024-02-12",
-        "marks": (len(mcqs) * 2) + (len(short_answers) * (5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10))),
-        "duration": "90 Mins",
-        "sections": []
-    }
+    # 3. Save to DB
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
     
-    if mcqs:
-        real_paper["sections"].append({
-            "name": "Section A: Multiple Choice Questions",
-            "marks": len(mcqs) * 2,
-            "questions": mcqs
-        })
-    if short_answers:
-        real_paper["sections"].append({
-            "name": "Section B: Short Answer Questions",
-            "marks": real_paper["marks"] - (len(mcqs) * 2),
-            "questions": short_answers
-        })
+    cursor = conn.cursor(dictionary=True)
     
-    papers.append(real_paper)
+    try:
+        title = f"{subject} {difficulty} Assessment"
+        duration = "90 Mins"
+        
+        # Calculate total marks
+        mcq_marks = len(mcqs) * 2
+        short_marks = sum(q["marks"] for q in short_answers)
+        total_marks = mcq_marks + short_marks
+
+        # Insert Paper
+        cursor.execute(
+            "INSERT INTO papers (subject, title, marks, duration, difficulty) VALUES (%s, %s, %s, %s, %s)",
+            (subject, title, total_marks, duration, difficulty)
+        )
+        paper_id = cursor.lastrowid
+
+        # Function to save question and link it
+        def save_q(q_data, q_type, q_marks):
+            cursor.execute(
+                "INSERT INTO questions (question_text, bloom_level, difficulty, question_type) VALUES (%s, %s, %s, %s)",
+                (q_data["text"], q_data.get("level", "Understand"), difficulty, q_type)
+            )
+            qid = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO paper_questions (paper_id, question_id, marks) VALUES (%s, %s, %s)",
+                (paper_id, qid, q_marks)
+            )
+
+        for q in mcqs:
+            save_q(q, 'MCQ', 2)
+
+        for q in short_answers:
+            save_q(q, 'Descriptive', q["marks"])
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Failed to save paper: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
     return jsonify({"message": "Paper generated successfully", "paperId": paper_id}), 201
 
 
 @app.route("/api/papers/<int:paper_id>", methods=["PUT"])
 def update_paper(paper_id):
-    data = request.get_json()
+    # For now, let's just return a placeholder or implement if needed
+    # Usually update means regenerating or editing specific fields
+    return jsonify({"message": "Update functionality not yet fully migrated, but paper persists in DB."}), 200
+
+
+@app.route("/api/papers/<int:paper_id>", methods=["GET"])
+def get_paper(paper_id):
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
     
-    subject = data.get("subject")
-    topics = data.get("topics", [])
-    blooms = data.get("blooms", [])
-    difficulty = data.get("difficulty")
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM papers WHERE id = %s", (paper_id,))
+    paper = cursor.fetchone()
     
-    if not subject or not topics or not blooms or not difficulty:
-        return jsonify({"error": "Missing required fields"}), 400
-        
-    paper_index = next((i for i, p in enumerate(papers) if p["id"] == paper_id), None)
-    if paper_index is None:
+    if not paper:
+        cursor.close()
+        conn.close()
         return jsonify({"error": "Paper not found"}), 404
         
-    # 1. Fetch relevant files for this subject
-    with open(MAPPING_FILE, "r") as f:
-        mapping = json.load(f)
+    # Fetch questions
+    query = """
+    SELECT q.*, pq.marks 
+    FROM questions q
+    JOIN paper_questions pq ON q.id = pq.question_id
+    WHERE pq.paper_id = %s
+    """
+    cursor.execute(query, (paper_id,))
+    questions = cursor.fetchall()
     
-    subject_files = [fname for fname, sub in mapping.items() if sub == subject]
+    cursor.close()
+    conn.close()
     
-    if not subject_files:
-        return jsonify({"error": f"No reference files found for subject {subject}"}), 400
+    # Format for UI
+    mcqs = [q for q in questions if q['question_type'] == 'MCQ']
+    short_answers = [q for q in questions if q['question_type'] == 'Descriptive']
     
-    file_path = os.path.join(RESOURCE_FOLDER, subject_files[0])
-    try:
-        raw_text = extractor.extract(file_path)
-    except Exception as e:
-        return jsonify({"error": f"Failed to extract text: {str(e)}"}), 500
+    # In DB we don't store options separately currently, so we'll mock them if needed for the UI
+    for q in mcqs:
+        q["text"] = q["question_text"]
+        q["options"] = ["Option A", "Option B", "Option C", "Option D"] # Placeholder for now
         
-    worthy_data = analysis["question_worthy_sentences"]
-    
-    potential_questions = []
-    for data in worthy_data:
-        sent = data["original"]
-        question_text = data["question"]
-        level = classifier.classify(sent)
-        matches_topic = any(topic.lower() in sent.lower() for topic in topics)
-        if matches_topic and level in blooms:
-            potential_questions.append({
-                "text": question_text,
-                "level": level,
-                "original": sent
-            })
-            
-    if not potential_questions:
-        potential_questions = [
-            {"text": d["question"], "level": classifier.classify(d["original"]), "original": d["original"]} 
-            for d in worthy_data[:10]
-        ]
+    for q in short_answers:
+        q["text"] = q["question_text"]
 
-    mcq_count = min(5, len(potential_questions))
-    mcqs = []
-    for i in range(mcq_count):
-        item = potential_questions[i]
-        sent = item["text"]
-        original = item["original"]
-        
-        available_keywords = [k for k in analysis["keywords"] if k.lower() not in original.lower()]
-        distractors = random.sample(available_keywords, min(3, len(available_keywords)))
-        while len(distractors) < 3: distractors.append(f"Option {len(distractors)+1}")
-        
-        mcqs.append({
-            "id": i + 1,
-            "text": sent,
-            "options": random.sample([original.split()[-1].strip(".,!?;:")] + distractors, 4)
-        })
-        
-    short_answers = []
-    for i in range(mcq_count, min(10, len(potential_questions))):
-        short_answers.append({
-            "id": i + 1,
-            "text": potential_questions[i]["text"],
-            "marks": 5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10)
-        })
-
-    updated_paper = {
-        "id": paper_id,
-        "subject": subject,
-        "topics": topics,
-        "blooms": blooms,
-        "difficulty": difficulty,
-        "title": f"{subject} {difficulty} Assessment",
-        "date": papers[paper_index].get("date", "2024-02-12"),
-        "marks": (len(mcqs) * 2) + (len(short_answers) * (5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10))),
-        "duration": "90 Mins",
-        "sections": []
-    }
-    
+    paper["sections"] = []
     if mcqs:
-        updated_paper["sections"].append({
+        paper["sections"].append({
             "name": "Section A: Multiple Choice Questions",
-            "marks": len(mcqs) * 2,
+            "marks": sum(q['marks'] for q in mcqs),
             "questions": mcqs
         })
     if short_answers:
-        updated_paper["sections"].append({
+        paper["sections"].append({
             "name": "Section B: Short Answer Questions",
-            "marks": updated_paper["marks"] - (len(mcqs) * 2),
+            "marks": sum(q['marks'] for q in short_answers),
             "questions": short_answers
         })
-    
-    papers[paper_index] = updated_paper
-    return jsonify({"message": "Paper updated successfully", "paperId": paper_id}), 200
+        
+    return jsonify(paper), 200
 
 
 @app.route("/api/papers/<int:paper_id>/download", methods=["GET"])
 def download_paper(paper_id):
-    paper = next((p for p in papers if p["id"] == paper_id), None)
-    if not paper:
-        return jsonify({"error": "Paper not found"}), 404
+    # Fetch paper data from DB for PDF generation
+    response = get_paper(paper_id)
+    if response[1] != 200:
+        return response
+    
+    paper = response[0].get_json()
         
     try:
         pdf_buffer = pdf_gen.generate_pdf(paper)
@@ -400,9 +410,6 @@ def download_paper(paper_id):
         )
     except Exception as e:
         return jsonify({"error": f"Failed to generate PDF: {str(e)}"}), 500
-
-
-@app.route("/api/papers/<int:paper_id>", methods=["GET"])
 
 
 if __name__ == "__main__":

@@ -4,38 +4,77 @@ from mysql.connector import errorcode
 # ----------------------------
 # Configuration
 # ----------------------------
-config = {
-    'user': 'root',           # your MySQL username
-    'password': 'yourpassword',  # your MySQL password
-    'host': 'localhost',      # usually localhost
-}
+def get_db_config():
+    return {
+        'user': 'root',
+        'password': 'yourpassword',  # UPDATE THIS
+        'host': 'localhost',
+        'database': DB_NAME
+    }
 
-DB_NAME = 'project_db'
+def get_db_connection():
+    try:
+        config = get_db_config()
+        # Remove database key for initial connection if you want to create it
+        # but for general use, we assume it exists after init_db()
+        conn = mysql.connector.connect(**config)
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Error connecting to DB: {err}")
+        return None
 
-TABLES = {}
+def init_db():
+    try:
+        # Connect without DB first to create it if it doesn't exist
+        temp_config = {
+            'user': 'root',
+            'password': 'yourpassword',
+            'host': 'localhost'
+        }
+        cnx = mysql.connector.connect(**temp_config)
+        cursor = cnx.cursor()
+        
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
+        cursor.execute(f"USE {DB_NAME}")
 
-# Users table
+        for table_name in TABLES:
+            try:
+                cursor.execute(TABLES[table_name])
+                print(f"Table `{table_name}` created successfully.")
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                    pass # Table already exists
+                else:
+                    print(f"Error creating table {table_name}: {err.msg}")
+
+        cursor.close()
+        cnx.close()
+        print("Database initialized successfully.")
+    except mysql.connector.Error as err:
+        print(f"Failed to initialize database: {err}")
+
+# Users table updated with password
 TABLES['users'] = """
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'teacher', 'student') DEFAULT 'student'
 );
 """
 
-# Subjects table
+# Rest of the tables (adding IF NOT EXISTS for safety)
 TABLES['subjects'] = """
-CREATE TABLE subjects (
+CREATE TABLE IF NOT EXISTS subjects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT
 );
 """
 
-# Topics table
 TABLES['topics'] = """
-CREATE TABLE topics (
+CREATE TABLE IF NOT EXISTS topics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     subject_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -43,104 +82,40 @@ CREATE TABLE topics (
 );
 """
 
-# Questions table
 TABLES['questions'] = """
-CREATE TABLE questions (
+CREATE TABLE IF NOT EXISTS questions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    topic_id INT NOT NULL,
+    topic_id INT DEFAULT NULL,
     question_text TEXT NOT NULL,
-    bloom_level ENUM('Remember','Understand','Apply','Analyze','Evaluate','Create') NOT NULL,
-    difficulty ENUM('Easy','Medium','Hard') NOT NULL,
+    bloom_level VARCHAR(50) NOT NULL,
+    difficulty VARCHAR(50) NOT NULL,
     question_type ENUM('MCQ','Descriptive') NOT NULL,
-    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
+    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
 );
 """
 
-# Answers table
-TABLES['answers'] = """
-CREATE TABLE answers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    question_id INT NOT NULL,
-    answer_text TEXT NOT NULL,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
-);
-"""
-
-# Papers table
 TABLES['papers'] = """
-CREATE TABLE papers (
+CREATE TABLE IF NOT EXISTS papers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    subject_id INT NOT NULL,
-    created_by INT NOT NULL,
-    total_marks INT NOT NULL,
-    difficulty ENUM('Easy','Medium','Hard') NOT NULL,
-    status ENUM('Draft','Published','Archived') DEFAULT 'Draft',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    subject VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    marks INT NOT NULL,
+    duration VARCHAR(50) NOT NULL,
+    difficulty VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
 
-# Paper_questions table
 TABLES['paper_questions'] = """
-CREATE TABLE paper_questions (
+CREATE TABLE IF NOT EXISTS paper_questions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paper_id INT NOT NULL,
     question_id INT NOT NULL,
-    marks INT NOT NULL,
-    question_order INT NOT NULL,
+    marks INT DEFAULT 0,
     FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 """
 
-# ----------------------------
-# Connect to MySQL
-# ----------------------------
-try:
-    cnx = mysql.connector.connect(**config)
-    cursor = cnx.cursor()
-    print("Connected to MySQL successfully!")
-except mysql.connector.Error as err:
-    print(f"Error: {err}")
-    exit(1)
-
-# ----------------------------
-# Create database
-# ----------------------------
-try:
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
-    print(f"Database `{DB_NAME}` created or already exists.")
-    cursor.execute(f"USE {DB_NAME}")
-except mysql.connector.Error as err:
-    print(f"Failed creating database: {err}")
-    exit(1)
-
-# ----------------------------
-# Create tables
-# ----------------------------
-for table_name in TABLES:
-    table_description = TABLES[table_name]
-    try:
-        cursor.execute(table_description)
-        print(f"Table `{table_name}` created successfully.")
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-            print(f"Table `{table_name}` already exists.")
-        else:
-            print(err.msg)
-
-# ----------------------------
-# Test the connection with a simple query
-# ----------------------------
-try:
-    cursor.execute("SELECT NOW() AS current_time;")
-    row = cursor.fetchone()
-    print(f"Test Query Result: Current Time = {row[0]}")
-except mysql.connector.Error as err:
-    print(f"Failed to execute test query: {err}")
-
-# Close connection
-cursor.close()
-cnx.close()
-print("MySQL connection closed.")
+if __name__ == "__main__":
+    init_db()

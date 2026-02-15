@@ -6,3 +6,4 @@ flask-cors
 werkzeug
 PyPDF2
 python-docx
+mysql-connector-python
