@@ -6,34 +6,16 @@ from nltk.corpus import wordnet
 nltk.download('wordnet')
 nltk.download('omw-1.4')
 
+from constants import BLOOM_VERBS, BLOOM_PRIORITY
+
 
 class BloomClassifier:
 
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
         self.lemmatizer = WordNetLemmatizer()
-        self.bloom_verbs = self.load_verb_mapping()
-
-        # Priority: High -> Low
-        self.priority = [
-            "Create",
-            "Evaluate",
-            "Analyze",
-            "Apply",
-            "Understand",
-            "Remember"
-        ]
-
-    
-    def load_verb_mapping(self):
-        return {
-            "Remember": ["define", "list", "recall", "identify", "state"],
-            "Understand": ["explain", "describe", "summarize", "interpret"],
-            "Apply": ["solve", "use", "implement", "execute", "calculate"],
-            "Analyze": ["compare", "differentiate", "analyze", "examine"],
-            "Evaluate": ["justify", "critique", "evaluate", "assess"],
-            "Create": ["design", "formulate", "create", "develop", "construct"]
-        }
+        self.bloom_verbs = BLOOM_VERBS
+        self.priority = BLOOM_PRIORITY
 
     def extract_verbs(self, sentence):
         doc = self.nlp(sentence)

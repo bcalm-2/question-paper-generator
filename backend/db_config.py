@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import errorcode
+from constants import DB_NAME, TABLES
 
 # ----------------------------
 # Configuration
@@ -52,70 +53,6 @@ def init_db():
         print("Database initialized successfully.")
     except mysql.connector.Error as err:
         print(f"Failed to initialize database: {err}")
-
-# Users table updated with password
-TABLES['users'] = """
-CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'teacher', 'student') DEFAULT 'student'
-);
-"""
-
-# Rest of the tables (adding IF NOT EXISTS for safety)
-TABLES['subjects'] = """
-CREATE TABLE IF NOT EXISTS subjects (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT
-);
-"""
-
-TABLES['topics'] = """
-CREATE TABLE IF NOT EXISTS topics (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    subject_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
-);
-"""
-
-TABLES['questions'] = """
-CREATE TABLE IF NOT EXISTS questions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    topic_id INT DEFAULT NULL,
-    question_text TEXT NOT NULL,
-    bloom_level VARCHAR(50) NOT NULL,
-    difficulty VARCHAR(50) NOT NULL,
-    question_type ENUM('MCQ','Descriptive') NOT NULL,
-    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
-);
-"""
-
-TABLES['papers'] = """
-CREATE TABLE IF NOT EXISTS papers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    subject VARCHAR(100) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    marks INT NOT NULL,
-    duration VARCHAR(50) NOT NULL,
-    difficulty VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-TABLES['paper_questions'] = """
-CREATE TABLE IF NOT EXISTS paper_questions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    paper_id INT NOT NULL,
-    question_id INT NOT NULL,
-    marks INT DEFAULT 0,
-    FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
-);
-"""
 
 if __name__ == "__main__":
     init_db()
