@@ -9,3 +9,4 @@ python-docx
 mysql-connector-python
 python-dotenv
 gunicorn
+reportlab
