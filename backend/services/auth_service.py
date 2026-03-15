@@ -1,10 +1,19 @@
 from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
+import jwt
+import datetime
+from services.config_service import config_service
 
 class AuthService:
     def __init__(self, user_repo):
         self.user_repo = user_repo
-        self.sessions = {}
+        self.secret = config_service.get("JWT_SECRET", "temporary-dev-secret-key")
+
+    def _generate_token(self, user_id):
+        payload = {
+            "userId": user_id,
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        }
+        return jwt.encode(payload, self.secret, algorithm="HS256")
 
     def register(self, data):
         name = data.get("name")
@@ -23,11 +32,10 @@ class AuthService:
         if not user_id:
             return {"error": "Registration failed"}, 500
 
-        session_id = str(uuid.uuid4())
-        self.sessions[session_id] = user_id
+        token = self._generate_token(user_id)
         return {
             "message": "User registered successfully",
-            "session_id": session_id,
+            "session_id": token,
             "user": {
                 "id": user_id,
                 "name": name,
@@ -44,11 +52,10 @@ class AuthService:
 
         user = self.user_repo.get_by_email(email)
         if user and check_password_hash(user["password"], password):
-            session_id = str(uuid.uuid4())
-            self.sessions[session_id] = user["id"]
+            token = self._generate_token(user["id"])
             return {
                 "message": "Login successful",
-                "session_id": session_id,
+                "session_id": token,
                 "user": {
                     "id": user["id"],
                     "name": user["name"],
@@ -58,5 +65,11 @@ class AuthService:
 
         return {"error": "Invalid credentials"}, 401
 
-    def get_user_id_by_session(self, session_id):
-        return self.sessions.get(session_id)
+    def get_user_id_by_session(self, token):
+        if not token:
+            return None
+        try:
+            decoded = jwt.decode(token, self.secret, algorithms=["HS256"])
+            return decoded["userId"]
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            return None
