@@ -9,7 +9,6 @@ function Register({ switchToLogin }) {
     name: "",
     email: "",
     password: "",
-    role: "Teacher",
   });
 
   const [error, setError] = useState("");

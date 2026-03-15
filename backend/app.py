@@ -30,8 +30,15 @@ app.register_blueprint(paper_bp)
 def health():
     return jsonify({"status": "ok", "message": "Server is running"}), 200
 
+from routes.auth_routes import auth_service
+
 @app.route("/api/config", methods=["GET"])
 def get_config():
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     config = {
         "SUBJECT_TOPICS": SUBJECT_TOPICS,
         "BLOOMS": BLOOMS

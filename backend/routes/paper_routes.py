@@ -25,6 +25,11 @@ MAPPING_FILE = "mapping.json"
 
 @paper_bp.route("/api/upload", methods=["POST"])
 def upload_file():
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     if "file" not in request.files:
         return jsonify({"message": "No file uploaded"}), 400
 
