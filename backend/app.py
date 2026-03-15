@@ -17,7 +17,11 @@ if not any(allowed_origins):
         raise RuntimeError("ALLOWED_ORIGINS environment variable is missing!")
     allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
+CORS(app, resources={r"/api/*": {
+    "origins": allowed_origins,
+    "expose_headers": ["X-Session-Id"],
+    "allow_headers": ["Content-Type", "X-Session-Id"]
+}})
 
 from constants import SUBJECT_TOPICS, BLOOMS
 
