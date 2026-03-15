@@ -80,41 +80,26 @@ This project is optimized for a zero-cost production deployment using profession
 *   **Database**: [Aiven](https://aiven.io/) (Free MySQL instance, no credit card required).
 *   **Backend**: [Render](https://render.com/) (Free Web Service tier).
 *   **Frontend**: [Vercel](https://vercel.com/) (Free tier for static sites).
-*   **Secrets**: [Infisical](https://infisical.com/) (Free Developer tier for secret management).
 
-### 2. Secret Vault Integration (Infisical)
-Instead of insecure `.env` files, this project uses **Infisical** for centralized secret management.
-1.  Create a free account on Infisical.
-2.  Create a project and add your secrets (`DB_HOST`, `DB_PASSWORD`, `JWT_SECRET`, etc.).
-3.  Generate a **Machine Identity** and get your `CLIENT_ID` and `CLIENT_SECRET`.
-4.  Set `INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`, and `INFISICAL_PROJECT_ID` in your Render environment variables.
-
-### 3. Step-by-Step Deployment
+### 2. Step-by-Step Deployment
 
 #### A. Database (Aiven)
 1. Sign up for **Aiven** and create a MySQL database.
-2. Note down the URI or individual credentials (Host, User, Password, Port).
-3. Whitelist `0.0.0.0/0` (or Render's outbound IPs) in Aiven's firewall.
+2. Note down the credentials: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+3. Whitelist `0.0.0.0/0` in Aiven's firewall.
 
 #### B. Backend (Render)
 1. Connect your GitHub repository.
-2. Build Command: `pip install -r backend/requirements.txt && python3 -m spacy download en_core_web_sm && python3 -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4')"`
-3. Start Command: `gunicorn backend.app:app` (or `python3 backend/app.py` for simplicity).
-4. Add Environment Variables:
-   * `INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`, `INFISICAL_PROJECT_ID`
+2. **Build Command**: `pip install -r requirements.txt && python3 -m spacy download en_core_web_sm && python3 -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4')"`
+3. **Start Command**: `gunicorn app:app` (Ensure Root Directory is set to `backend`).
+4. **Environment Variables**:
+   * `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`: From Aiven.
+   * `JWT_SECRET`: A random string.
    * `FLASK_ENV`: `production`
    * `ALLOWED_ORIGINS`: Your Vercel URL.
 
 #### C. Frontend (Vercel)
-1. Import your repository into Vercel.
-2. Framework Preset: `Vite`.
-3. Build Command: `npm run build`.
-4. Output Directory: `dist`.
-5. Add Environment Variable:
-   * `VITE_API_BASE_URL`: Your Render service URL (e.g., `https://your-api.onrender.com/api`).
-
-### 4. Security Best Practices
-*   **Zero Hardcoding**: All sensitive data is fetched at runtime from the Vault.
-*   **CORS Protection**: The API only responds to requests from your authorized Vercel domain.
-*   **HTTPS**: All platforms (Render, Vercel, Aiven) provide SSL encryption out of the box.
+1. Import your repository.
+2. **Environment Variable**:
+   * `VITE_API_BASE_URL`: Your Render URL (e.g., `https://api.onrender.com/api`).
 
