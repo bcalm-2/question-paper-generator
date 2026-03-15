@@ -25,9 +25,10 @@ from constants import SUBJECT_TOPICS, BLOOMS
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(paper_bp)
 
+@app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok", "message": "Server is running"}), 200
 
 @app.route("/api/config", methods=["GET"])
 def get_config():
