@@ -20,13 +20,13 @@ class PaperService:
         return papers, 200
 
     def generate_paper(self, data):
-        subject = data.get("subject")
+        subject_id = data.get("subject_id")
         topics = data.get("topics", [])
         blooms = data.get("blooms", [])
         difficulty = data.get("difficulty")
         num_questions = int(data.get("num_questions", 10))
 
-        missing = [f for f in ["subject", "topics", "blooms", "difficulty"] if not data.get(f)]
+        missing = [f for f in ["subject_id", "topics", "blooms", "difficulty"] if not data.get(f)]
         if missing:
             return {"error": f"Missing required fields: {', '.join(missing)}"}, 400
 
@@ -37,12 +37,35 @@ class PaperService:
         with open(self.MAPPING_FILE, "r") as f:
             mapping = json.load(f)
 
-        subject_files = [fname for fname, sub in mapping.items() if sub == subject]
-        if not subject_files:
-            return {"error": f"No reference files found for subject {subject}. Please upload a file first."}, 400
+        # Get subject name for mapping lookup
+        from repositories.subject_repository import SubjectRepository
+        sub_repo = SubjectRepository()
+        subject_data = sub_repo.get_by_id(subject_id)
+        if not subject_data:
+            return {"error": "Subject not found"}, 404
+        
+        subject_name = subject_data["name"]
 
-        file_path = os.path.join(self.RESOURCE_FOLDER, subject_files[0])
-        logger.info(f"Extracting text from reference file: {file_path}")
+        # Dynamic Fallback Logic
+        fallback_file = "general_reference.txt"
+        file_path = None
+        
+        subject_files = [fname for fname, sub in mapping.items() if sub == subject_name]
+        if subject_files:
+            potential_path = os.path.join(self.RESOURCE_FOLDER, subject_files[0])
+            if os.path.exists(potential_path):
+                file_path = potential_path
+            else:
+                logger.warning(f"Mapped file {subject_files[0]} not found on disk for subject {subject_name}. Falling back.")
+        
+        if not file_path:
+            logger.info(f"No specific reference found for {subject_name}. Using {fallback_file}")
+            file_path = os.path.join(self.RESOURCE_FOLDER, fallback_file)
+            
+        if not os.path.exists(file_path):
+            return {"error": "Critical: Neither subject reference nor general fallback found. Please contact admin."}, 500
+
+        logger.info(f"Extracting text from: {file_path}")
         try:
             raw_text = self.extractor.extract(file_path)
             logger.info(f"Extracted {len(raw_text)} characters")
@@ -117,8 +140,8 @@ class PaperService:
         logger.info(f"Finalizing paper: {len(mcqs)} MCQs, {len(short_answers)} Descriptive questions")
         try:
             total_marks = (len(mcqs) * 2) + sum(q["marks"] for q in short_answers)
-            title = f"{subject} {difficulty} Assessment"
-            paper_id = self.paper_repo.create_paper(data.get("user_id"), subject, title, total_marks, "90 Mins", difficulty)
+            title = f"{subject_name} {difficulty} Assessment"
+            paper_id = self.paper_repo.create_paper(data.get("user_id"), subject_id, title, total_marks, "90 Mins", difficulty)
 
             for q in mcqs:
                 qid = self.paper_repo.create_question(q["text"], q["level"], difficulty, 'MCQ')
@@ -195,13 +218,13 @@ class PaperService:
                 return {"error": "Unauthorized access to update this paper"}, 403
             
             # Use provided values or fall back to existing ones
-            subject = data.get("subject", existing_paper['subject'])
+            subject_id = data.get("subject_id", existing_paper['subject_id'])
             title = data.get("title", existing_paper['title'])
             marks = data.get("marks", existing_paper['marks'])
             duration = data.get("duration", existing_paper['duration'])
             difficulty = data.get("difficulty", existing_paper['difficulty'])
 
-            self.paper_repo.update_paper(paper_id, subject, title, marks, duration, difficulty)
+            self.paper_repo.update_paper(paper_id, subject_id, title, marks, duration, difficulty)
             return {"message": "Paper updated successfully"}, 200
         except Exception as e:
             return {"error": f"Failed to update paper: {str(e)}"}, 500

@@ -1,7 +1,7 @@
-
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getAllPapers } from "../services/paperService.js";
+import { logout } from "../services/authService.js";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -33,10 +33,35 @@ function Dashboard() {
         <div className="paper-container animate-fade-in">
             {/* Header Section */}
             <div className="glass-card mb-8">
-                <h1 className="title" style={{ textAlign: "left", fontSize: "1.8rem", marginBottom: "0.5rem" }}>
-                    Dashboard
-                </h1>
-                <p className="text-muted">Welcome back, {userName}!</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                        <h1 className="title" style={{ textAlign: "left", fontSize: "1.8rem", marginBottom: "0.5rem" }}>
+                            Dashboard
+                        </h1>
+                        <p className="text-muted">Welcome, {userName}!</p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            logout();
+                            navigate("/auth");
+                        }}
+                        style={{
+                            background: "rgba(239, 68, 68, 0.1)",
+                            color: "#ef4444",
+                            border: "1px solid rgba(239, 68, 68, 0.3)",
+                            padding: "0.5rem 1rem",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                            fontWeight: "500",
+                            transition: "all 0.2s"
+                        }}
+                        onMouseOver={(e) => e.target.style.background = "rgba(239, 68, 68, 0.2)"}
+                        onMouseOut={(e) => e.target.style.background = "rgba(239, 68, 68, 0.1)"}
+                    >
+                        Logout
+                    </button>
+                </div>
 
                 <div style={{ marginTop: "1.5rem" }}>
                     <button
@@ -45,6 +70,22 @@ function Dashboard() {
                         style={{ width: "auto", padding: "0.8rem 1.5rem" }}
                     >
                         + Create New Paper
+                    </button>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => navigate("/config")}
+                        style={{
+                            width: "auto",
+                            padding: "0.8rem 1.5rem",
+                            marginLeft: "1rem",
+                            background: "transparent",
+                            border: "1px solid #60a5fa",
+                            color: "#60a5fa",
+                            borderRadius: "8px",
+                            cursor: "pointer"
+                        }}
+                    >
+                        ⚙ Configure Ecosystem
                     </button>
                 </div>
             </div>

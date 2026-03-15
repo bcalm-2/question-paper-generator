@@ -5,6 +5,7 @@ import Register from "./components/Register";
 import CreatePaper from "./components/CreatePaper";
 import Dashboard from "./components/Dashboard";
 import ViewPaper from "./components/ViewPaper";
+import ConfigDashboard from "./components/ConfigDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ViewPaper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <ProtectedRoute>
+                <ConfigDashboard />
               </ProtectedRoute>
             }
           />

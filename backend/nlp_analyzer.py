@@ -1,13 +1,25 @@
-import spacy
+# import spacy  <-- Moved to lazy load in _get_model
 from collections import Counter
 
 
 class NLPAnalyzer:
-    def __init__(self, model="en_core_web_sm"):
-        self.nlp = spacy.load(model)
+    _nlp_model = None  # Class-level cache for the model
+
+    def __init__(self, model_name="en_core_web_sm"):
+        self.model_name = model_name
+
+    def _get_model(self):
+        """Lazy loads the spaCy model and caches it."""
+        if NLPAnalyzer._nlp_model is None:
+            import spacy
+            print(f"Loading spaCy model: {self.model_name}...")
+            NLPAnalyzer._nlp_model = spacy.load(self.model_name)
+            print("Model loaded successfully.")
+        return NLPAnalyzer._nlp_model
 
     def analyze(self, text: str):
-        doc = self.nlp(text)
+        nlp = self._get_model()
+        doc = nlp(text)
 
         sentences = []
         entities = []

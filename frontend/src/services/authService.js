@@ -1,21 +1,4 @@
-import axios from "axios";
-
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "",
-});
-
-api.interceptors.request.use(
-    (config) => {
-        const sessionId = localStorage.getItem("sessionId");
-        if (sessionId) {
-            config.headers["X-Session-Id"] = sessionId;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+import api from "./api";
 
 export const register = async (userData) => {
     try {

@@ -37,10 +37,10 @@ def upload_file():
         return jsonify({"message": "No file uploaded"}), 400
 
     file = request.files["file"]
-    subject = request.form.get("subject")
+    subject_id = request.form.get("subject_id")
 
-    if not subject:
-        return jsonify({"message": "Subject is required"}), 400
+    if not subject_id:
+        return jsonify({"message": "Subject ID is required"}), 400
 
     if file.filename == "":
         return jsonify({"message": "No filename"}), 400
@@ -48,22 +48,31 @@ def upload_file():
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".txt")):
         return jsonify({"message": "Only PDF or TXT allowed"}), 400
 
+    # Get subject name for mapping
+    from repositories.subject_repository import SubjectRepository
+    sub_repo = SubjectRepository()
+    subject_data = sub_repo.get_by_id(subject_id)
+    subject_name = subject_data["name"] if subject_data else "Unknown"
+
     if not os.path.exists(RESOURCE_FOLDER):
         os.makedirs(RESOURCE_FOLDER)
 
     save_path = os.path.join(RESOURCE_FOLDER, file.filename)
-    logger.info(f"Saving uploaded file: {file.filename} for subject: {subject}")
+    logger.info(f"Saving uploaded file: {file.filename} for subject: {subject_name}")
     file.save(save_path)
 
-    # update mapping.json
-    data = {}
+    # Load and update mapping
+    mapping_data = {}
     if os.path.exists(MAPPING_FILE):
-        with open(MAPPING_FILE, "r") as f:
-            data = json.load(f)
+        try:
+            with open(MAPPING_FILE, "r") as f:
+                mapping_data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading mapping file: {e}")
 
-    data[file.filename] = subject
+    mapping_data[file.filename] = subject_name
     with open(MAPPING_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+        json.dump(mapping_data, f, indent=4)
 
     return jsonify({"message": "Uploaded successfully"})
 
@@ -86,7 +95,7 @@ def generate_paper():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
-    logger.info(f"Generating paper for user {user_id}: {data.get('subject')} {data.get('difficulty')}")
+    logger.info(f"Generating paper for user {user_id}: Subject ID {data.get('subject_id')} {data.get('difficulty')}")
     data["user_id"] = user_id
     result, status = paper_service.generate_paper(data)
     if status == 201:

@@ -8,12 +8,12 @@ function CreatePaper() {
   const { id } = useParams();
   const isEditMode = !!id;
 
-  const [subject, setSubject] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [topics, setTopics] = useState([]);
   const [blooms, setBlooms] = useState([]);
   const [difficulty, setDifficulty] = useState("");
 
-  const [config, setConfig] = useState({ SUBJECT_TOPICS: {}, BLOOMS: [] });
+  const [config, setConfig] = useState({ SUBJECT_TOPICS: {}, SUBJECTS: [], BLOOMS: [] });
   const [loading, setLoading] = useState(true);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -26,19 +26,10 @@ function CreatePaper() {
 
         if (isEditMode) {
           const paperData = await getPaperById(id);
-          setSubject(paperData.subject);
-          setTopics(paperData.topics || []); // Assuming topics might need to be extracted or items exist
-          // Fallback logic if paper object structure is different (it is in app.py mocks)
-          // In app.py mock: sections contain questions which relate to topics.
-          // Let's assume we can set these if they exist in the object or use defaults.
+          setSelectedSubjectId(paperData.subject_id);
+          setTopics(paperData.topics || []);
           setBlooms(paperData.blooms || []);
           setDifficulty(paperData.difficulty || "");
-
-          // Heuristic for topics if they aren't explicitly in the root (mock paper doesn't have them in root)
-          if (!paperData.topics && paperData.sections) {
-            // In a real app we'd have the params stored. Since it's a mock, I'll just keep it simple.
-            // If they aren't there, the user might need to reselect, but let's try to be smart.
-          }
         }
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -50,7 +41,12 @@ function CreatePaper() {
   }, [id, isEditMode]);
 
   const SUBJECT_TOPICS = config.SUBJECT_TOPICS;
+  const SUBJECTS = config.SUBJECTS;
   const BLOOMS = config.BLOOMS;
+
+  // Find subject name for UI display and mapping
+  const currentSubjectObj = SUBJECTS.find(s => s.id == selectedSubjectId);
+  const subjectName = currentSubjectObj ? currentSubjectObj.name : "";
 
   const toggle = (value, list, setList) => {
     setList(
@@ -64,7 +60,7 @@ function CreatePaper() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!subject) {
+    if (!selectedSubjectId) {
       alert("Please select a subject first.");
       e.target.value = null;
       return;
@@ -72,7 +68,7 @@ function CreatePaper() {
 
     setUploadStatus("Uploading...");
     try {
-      await uploadFile(file, subject);
+      await uploadFile(file, selectedSubjectId);
       setUploadedFile(file.name);
       setUploadStatus("Upload Successful");
     } catch (err) {
@@ -83,7 +79,12 @@ function CreatePaper() {
   };
 
   const submitHandler = async () => {
-    const data = { subject, topics, blooms, difficulty };
+    const data = {
+      subject_id: selectedSubjectId,
+      topics,
+      blooms,
+      difficulty
+    };
     try {
       if (isEditMode) {
         await updatePaper(id, data);
@@ -101,7 +102,7 @@ function CreatePaper() {
   };
 
   const disabled =
-    !subject || topics.length === 0 || blooms.length === 0 || !difficulty;
+    !selectedSubjectId || topics.length === 0 || blooms.length === 0 || !difficulty;
 
   return (
     <div className="paper-container animate-fade-in">
@@ -128,25 +129,25 @@ function CreatePaper() {
         <div className="form-section">
           <label className="section-title">Select Subject</label>
           <select
-            value={subject}
+            value={selectedSubjectId}
             onChange={e => {
-              setSubject(e.target.value);
+              setSelectedSubjectId(e.target.value);
               setTopics([]);
             }}
           >
             <option value="">-- Choose a Subject --</option>
-            {Object.keys(SUBJECT_TOPICS).map(sub => (
-              <option key={sub} value={sub}>{sub}</option>
+            {SUBJECTS.map(sub => (
+              <option key={sub.id} value={sub.id}>{sub.name}</option>
             ))}
           </select>
         </div>
 
         {/* Topics Selection */}
-        {subject && (
+        {selectedSubjectId && subjectName && SUBJECT_TOPICS[subjectName] && (
           <div className="form-section animate-fade-in">
-            <label className="section-title">Select Topics</label>
+            <label className="section-title">Select Topics for {subjectName}</label>
             <div className="chips-grid">
-              {SUBJECT_TOPICS[subject].map(topic => (
+              {SUBJECT_TOPICS[subjectName].map(topic => (
                 <div
                   key={topic}
                   className={`chip ${topics.includes(topic) ? 'active' : ''}`}
@@ -160,7 +161,7 @@ function CreatePaper() {
         )}
 
         {/* File Upload Section */}
-        {subject && (
+        {selectedSubjectId && (
           <div className="form-section animate-fade-in">
             <label className="section-title">Reference Material (Optional)</label>
             <div style={{

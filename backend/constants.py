@@ -48,13 +48,14 @@ TABLES['papers'] = """
 CREATE TABLE IF NOT EXISTS papers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    subject VARCHAR(100) NOT NULL,
+    subject_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     marks INT NOT NULL,
     duration VARCHAR(50) NOT NULL,
     difficulty VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
 );
 """
 
@@ -79,8 +80,8 @@ CREATE TABLE IF NOT EXISTS question_options (
 );
 """
 
-# Application Config
-SUBJECT_TOPICS = {
+# Application Config (Initial seed data, will be moved to DB)
+INITIAL_SUBJECT_TOPICS = {
     "DBMS": ["Normalization", "ER Model", "Transactions", "SQL", "Indexing", "Relational Algebra", "NoSQL", "Query Optimization"],
     "OS": ["Processes", "Memory Management", "Deadlocks", "Scheduling", "File Systems", "Virtual Memory", "Threads", "Distributed Systems"],
     "CN": ["OSI Model", "TCP/IP", "Routing", "Network Security", "DNS", "HTTP/HTTPS", "Socket Programming", "Wireless Networks"],

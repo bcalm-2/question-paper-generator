@@ -1,0 +1,7 @@
+Computer Science is the study of computers and computational systems. Unlike electrical and computer engineers, computer scientists deal mostly with software and software systems; this includes their theory, design, development, and application. Principal areas of study within Computer Science include artificial intelligence, computer systems and networks, security, database systems, human computer interaction, vision and graphics, numerical analysis, programming languages, software engineering, bioinformatics and theory of computing.
+
+Algorithms and data structures are the heart of computer science. An algorithm is a step-by-step procedure for calculations. Data structures like arrays, linked lists, trees, and graphs organize data for efficient access and modification. Software engineering focuses on the systematic application of engineering approaches to the development of software. 
+
+Operating Systems manage hardware resources and provide common services for computer programs. Databases store and manage data efficiently using structured formats. Networking enables communication between different computing devices. Cybersecurity protects systems from digital attacks.
+
+Artificial Intelligence aims to create systems capable of performing tasks that typically require human intelligence, such as visual perception, speech recognition, decision-making, and translation between languages. Machine learning, a subset of AI, focuses on the use of data and algorithms to imitate the way that humans learn, gradually improving its accuracy.

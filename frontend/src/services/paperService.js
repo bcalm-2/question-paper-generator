@@ -1,23 +1,4 @@
-import axios from "axios";
-
-// Create axios instance
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "",
-});
-
-// Add a request interceptor to include the session ID
-api.interceptors.request.use(
-    (config) => {
-        const sessionId = localStorage.getItem("sessionId");
-        if (sessionId) {
-            config.headers["X-Session-Id"] = sessionId;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+import api from "./api";
 
 export const getConfig = async () => {
     try {
@@ -55,10 +36,10 @@ export const generatePaper = async (data) => {
     }
 };
 
-export const uploadFile = async (file, subject) => {
+export const uploadFile = async (file, subjectId) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("subject", subject);
+    formData.append("subject_id", subjectId);
 
     try {
         const response = await api.post("/upload", formData, {

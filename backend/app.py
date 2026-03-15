@@ -4,6 +4,7 @@ from flask_cors import CORS
 from db_config import init_db
 from routes.auth_routes import auth_bp
 from routes.paper_routes import paper_bp
+from routes.config_routes import config_bp
 import logging
 
 # Configure Logging
@@ -14,7 +15,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Database
-init_db()
+import os
+if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+    init_db()
+else:
+    logger.info("Skipping init_db in reloader process")
 
 app = Flask(__name__)
 
@@ -31,11 +36,12 @@ CORS(app, resources={r"/api/*": {
     "allow_headers": ["Content-Type", "X-Session-Id"]
 }})
 
-from constants import SUBJECT_TOPICS, BLOOMS
+from constants import BLOOMS
 
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(paper_bp)
+app.register_blueprint(config_bp)
 
 @app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
@@ -54,8 +60,32 @@ def get_config():
         logger.warning("Unauthorized access attempt to /api/config")
         return jsonify({"error": "Unauthorized"}), 401
 
+    from repositories.subject_repository import SubjectRepository
+    sub_repo = SubjectRepository()
+
+    # Optimized single JOIN query
+    flat_data = sub_repo.get_all_with_topics()
+    
+    subjects = []
+    subject_topics = {}
+    seen_subjects = set()
+    
+    for row in flat_data:
+        sub_id = row['subject_id']
+        sub_name = row['subject_name']
+        topic_name = row['topic_name']
+        
+        if sub_id not in seen_subjects:
+            subjects.append({"id": sub_id, "name": sub_name})
+            subject_topics[sub_name] = []
+            seen_subjects.add(sub_id)
+            
+        if topic_name:
+            subject_topics[sub_name].append(topic_name)
+
     config = {
-        "SUBJECT_TOPICS": SUBJECT_TOPICS,
+        "SUBJECT_TOPICS": subject_topics, # Keep key for frontend compatibility
+        "SUBJECTS": subjects, # New key for detailed ID-based access
         "BLOOMS": BLOOMS
     }
     logger.info("Config fetched successfully")
