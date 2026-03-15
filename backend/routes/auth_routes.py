@@ -12,7 +12,10 @@ def register():
     result, status = auth_service.register(data)
     
     if status == 201:
-        response = make_response(jsonify({"message": result["message"]}), 201)
+        response = make_response(jsonify({
+            "message": result["message"],
+            "user": result["user"]
+        }), 201)
         response.headers["X-Session-Id"] = result["session_id"]
         return response
     

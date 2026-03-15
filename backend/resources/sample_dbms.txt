@@ -1,0 +1,40 @@
+DBMS stands for Database Management System. 
+Normalization is the process of organizing data in a database.
+Transactions are a sequence of operations performed as a single logical unit of work.
+SQL is used for managing and manipulating relational databases.
+ER Model helps in designing the database schema.
+Indexing improves the speed of data retrieval operations.
+Relational Algebra is a formal system for manipulating relations.
+NoSQL databases are non-relational and can handle unstructured data.
+Query Optimization is the process of selecting the most efficient way to execute a query.
+Processes are programs in execution.
+Memory Management is the act of managing computer memory.
+Deadlocks occur when two or more processes are waiting for each other to release resources.
+Scheduling is the method by which work is assigned to resources.
+File Systems manage how data is stored and retrieved.
+Virtual Memory gives an illusion of a large memory to the user.
+Threads are the smallest unit of processing that can be performed in an OS.
+Distributed Systems consist of multiple autonomous computers that communicate through a network.
+OSI Model defines a networking framework to implement protocols in layers.
+TCP/IP is a suite of communication protocols used to interconnect network devices on the internet.
+Routing is the process of selecting a path for traffic in a network.
+Network Security consists of the policies and practices adopted to prevent and monitor unauthorized access.
+DNS translates domain names to IP addresses.
+HTTP is an application layer protocol for distributed, collaborative, hypermedia information systems.
+Socket Programming is a way of connecting two nodes on a network to communicate with each other.
+Wireless Networks are computer networks that are not connected by cables of any kind.
+Arrays are a collection of items stored at contiguous memory locations.
+Linked Lists are a linear collection of data elements whose order is not given by their physical placement in memory.
+Trees are hierarchical data structures.
+Graphs consist of a finite set of vertices and a set of edges which connect them.
+Dynamic Programming is an algorithmic technique for solving an optimization problem by breaking it down into simpler subproblems.
+Sorting is any process of arranging items systematically.
+Searching is an algorithm for finding an item with specified properties among a collection of items.
+Recursion is a method of solving a problem where the solution depends on solutions to smaller instances of the same problem.
+Search Algorithms are algorithms used to retrieve information stored within some data structure.
+Neural Networks are a series of algorithms that endeavor to recognize underlying relationships in a set of data.
+Machine Learning is the study of computer algorithms that improve automatically through experience.
+NLP is a subfield of linguistics, computer science, and AI concerned with the interactions between computers and human language.
+Robotics is an interdisciplinary branch of computer science and engineering.
+Expert Systems are computer systems that emulate the decision-making ability of a human expert.
+Fuzzy Logic is a form of many-valued logic in which the truth values of variables may be any real number between 0 and 1.

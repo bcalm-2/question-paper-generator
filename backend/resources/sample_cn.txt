@@ -1,0 +1,24 @@
+Computer Networks (CN) are systems of interconnected computers.
+OSI Model defines a networking framework to implement protocols in seven layers.
+Layer 1 is the Physical Layer.
+Layer 2 is the Data Link Layer.
+Layer 3 is the Network Layer.
+Layer 4 is the Transport Layer.
+Layer 5 is the Session Layer.
+Layer 6 is the Presentation Layer.
+Layer 7 is the Application Layer.
+TCP/IP is a suite of communication protocols used to interconnect network devices.
+Transmission Control Protocol (TCP) provides reliable, ordered, and error-checked delivery of a stream of octets.
+User Datagram Protocol (UDP) is a connectionless protocol.
+Routing is the process of selecting a path for traffic in a network.
+Network Security consists of the policies and practices adopted to prevent and monitor unauthorized access.
+DNS translates domain names to IP addresses.
+HTTP is an application layer protocol for distributed, collaborative, hypermedia information systems.
+HTTPS is the secure version of HTTP.
+Socket Programming is a way of connecting two nodes on a network to communicate with each other.
+Wireless Networks use wireless data connections between network nodes.
+Firewalls monitor and control incoming and outgoing network traffic.
+IP Addresses uniquely identify devices on a network.
+IPv4 uses a 32-bit address space.
+IPv6 uses a 128-bit address space.
+Subnetting is the practice of dividing a network into two or more networks.

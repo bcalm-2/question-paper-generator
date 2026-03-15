@@ -5,10 +5,16 @@ import { getAllPapers } from "../services/paperService.js";
 
 function Dashboard() {
     const navigate = useNavigate();
+    const [userName, setUserName] = useState("User");
     const [papers, setPapers] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const storedName = localStorage.getItem("userName");
+        if (storedName) {
+            setUserName(storedName);
+        }
+
         const fetchPapers = async () => {
             try {
                 const data = await getAllPapers();
@@ -30,7 +36,7 @@ function Dashboard() {
                 <h1 className="title" style={{ textAlign: "left", fontSize: "1.8rem", marginBottom: "0.5rem" }}>
                     Dashboard
                 </h1>
-                <p className="text-muted">Welcome back, Srashti!</p>
+                <p className="text-muted">Welcome back, {userName}!</p>
 
                 <div style={{ marginTop: "1.5rem" }}>
                     <button

@@ -1,0 +1,21 @@
+Data Structures and Algorithms (DSA) are fundamental to computer science.
+Arrays are a collection of items stored at contiguous memory locations.
+Linked Lists are a linear collection of data elements.
+Stacks follow the Last-In-First-Out (LIFO) principle.
+Queues follow the First-In-First-Out (FIFO) principle.
+Trees are hierarchical data structures.
+Binary Search Tree (BST) is a node-based binary tree data structure.
+Graphs consist of a finite set of vertices and a set of edges.
+Hashing is a technique to uniquely identify a specific object from a group of similar objects.
+Sorting is any process of arranging items systematically.
+Bubble Sort is a simple sorting algorithm.
+Quick Sort follows the divide and conquer approach.
+Merge Sort is also a divide and conquer algorithm.
+Searching is an algorithm for finding an item within a collection.
+Binary Search is a fast search algorithm with run-time complexity of O(log n).
+Recursion is a method of solving a problem where the solution depends on solutions to smaller instances of the same problem.
+Dynamic Programming is an algorithmic technique for solving an optimization problem.
+Greedy Algorithms make the locally optimal choice at each stage.
+Time Complexity is the amount of time taken by an algorithm to run.
+Space Complexity is the amount of memory space required by an algorithm.
+Big O Notation represents the upper bound of the running time.

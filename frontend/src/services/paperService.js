@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance
 const api = axios.create({
-    baseURL: "http://localhost:5000/api",
+    baseURL: import.meta.env.VITE_API_BASE_URL || "",
 });
 
 // Add a request interceptor to include the session ID
@@ -86,12 +86,12 @@ export const downloadPaperPDF = async (id) => {
         const response = await api.get(`/papers/${id}/download`, {
             responseType: 'blob'
         });
-        
+
         // Create a link element to trigger the download
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        
+
         // Extract filename from header if possible, else use default
         const contentDisposition = response.headers['content-disposition'];
         let filename = `Paper_${id}.pdf`;
@@ -101,11 +101,11 @@ export const downloadPaperPDF = async (id) => {
                 filename = filenameMatch[1];
             }
         }
-        
+
         link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
-        
+
         // Cleanup
         link.remove();
         window.URL.revokeObjectURL(url);

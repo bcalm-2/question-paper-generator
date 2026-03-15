@@ -7,3 +7,5 @@ werkzeug
 PyPDF2
 python-docx
 mysql-connector-python
+python-dotenv
+infisical-python-sdk

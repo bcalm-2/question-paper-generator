@@ -1,9 +1,7 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
-
 const api = axios.create({
-    baseURL: "http://localhost:5000/api",
+    baseURL: import.meta.env.VITE_API_BASE_URL || "",
 });
 
 api.interceptors.request.use(
@@ -27,6 +25,9 @@ export const register = async (userData) => {
         if (sessionId) {
             localStorage.setItem("sessionId", sessionId);
         }
+        if (response.data.user && response.data.user.name) {
+            localStorage.setItem("userName", response.data.user.name);
+        }
 
         return response.data;
     } catch (error) {
@@ -42,6 +43,9 @@ export const login = async (credentials) => {
         if (sessionId) {
             localStorage.setItem("sessionId", sessionId);
         }
+        if (response.data.user && response.data.user.name) {
+            localStorage.setItem("userName", response.data.user.name);
+        }
 
         return response.data;
     } catch (error) {
@@ -51,6 +55,7 @@ export const login = async (credentials) => {
 
 export const logout = () => {
     localStorage.removeItem("sessionId");
+    localStorage.removeItem("userName");
 };
 
 export default {

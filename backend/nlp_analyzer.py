@@ -29,15 +29,21 @@ class NLPAnalyzer:
 
             if is_worthy:
                 formatted_q = self._format_as_question(sent, category)
+                # Extract subject for distractors/options
+                doc_sent = sent.as_doc() if hasattr(sent, 'as_doc') else sent
+                subject = next(sent.noun_chunks).text if list(sent.noun_chunks) else None
+                
                 sentences.append({
                     "text": sent_text,
                     "question": formatted_q,
-                    "category": category
+                    "category": category,
+                    "subject": subject
                 })
                 question_worthy.append({
                     "original": sent_text,
                     "question": formatted_q,
-                    "category": category
+                    "category": category,
+                    "subject": subject
                 })
 
         # Enhanced keyword extraction (nouns and proper nouns are better for distractors)

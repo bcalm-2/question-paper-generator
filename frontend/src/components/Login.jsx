@@ -31,7 +31,7 @@ function Login({ switchToRegister }) {
   return (
     <div className="auth-card animate-fade-in">
       <form className="glass-card" onSubmit={handleLogin}>
-        <h2 className="title">Welcome Back</h2>
+        <h2 className="title">Welcome</h2>
 
         {error && (
           <div className="error-msg">

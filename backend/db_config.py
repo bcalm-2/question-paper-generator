@@ -1,3 +1,4 @@
+from services.config_service import config_service
 import mysql.connector
 from mysql.connector import errorcode
 from constants import DB_NAME, TABLES
@@ -7,17 +8,18 @@ from constants import DB_NAME, TABLES
 # ----------------------------
 def get_db_config():
     return {
-        'user': 'root',
-        'password': 'yourpassword',  # UPDATE THIS
-        'host': 'localhost',
-        'database': DB_NAME
+        'host': config_service.get("DB_HOST"),
+        'user': config_service.get("DB_USER"),
+        'password': config_service.get("DB_PASSWORD"),
+        'database': config_service.get("DB_NAME", DB_NAME)
     }
 
 def get_db_connection():
     try:
         config = get_db_config()
-        # Remove database key for initial connection if you want to create it
-        # but for general use, we assume it exists after init_db()
+        if not all([config['host'], config['user'], config['password']]):
+            print("Error: Missing database credentials in environment variables.")
+            return None
         conn = mysql.connector.connect(**config)
         return conn
     except mysql.connector.Error as err:
@@ -28,10 +30,15 @@ def init_db():
     try:
         # Connect without DB first to create it if it doesn't exist
         temp_config = {
-            'user': 'root',
-            'password': 'yourpassword',
-            'host': 'localhost'
+            'host': os.getenv("DB_HOST"),
+            'user': os.getenv("DB_USER"),
+            'password': os.getenv("DB_PASSWORD")
         }
+        
+        if not all(temp_config.values()):
+            print("Error: Missing database credentials for initialization.")
+            return
+
         cnx = mysql.connector.connect(**temp_config)
         cursor = cnx.cursor()
         

@@ -1,0 +1,20 @@
+Artificial Intelligence (AI) is intelligence demonstrated by machines.
+Search Algorithms are used to find solutions in a state space.
+Breadth-First Search (BFS) explores all nodes at the present depth level before moving on to nodes at the next depth level.
+Depth-First Search (DFS) explores as far as possible along each branch before backtracking.
+Heuristic search uses a heuristic function to estimate the cost to reach the goal.
+A* Search algorithm uses both the cost to reach the node and the estimated cost to the goal.
+Neural Networks are inspired by the biological brain.
+Machine Learning involves training models on data.
+Natural Language Processing (NLP) enables computers to understand human language.
+Robotics combines AI with physical actuators.
+Expert Systems use a knowledge base and an inference engine.
+Fuzzy Logic deals with degrees of truth rather than binary true/false.
+Minimax algorithm is used in decision making and game theory.
+Alpha-Beta Pruning reduces the number of nodes evaluated by the minimax algorithm.
+Genetic Algorithms are search heuristics inspired by Charles Darwin’s theory of natural evolution.
+Reinforcement Learning is an area of machine learning concerned with how intelligent agents ought to take actions in an environment to maximize the notion of cumulative reward.
+Supervised Learning is the machine learning task of learning a function that maps an input to an output based on example input-output pairs.
+Unsupervised Learning helps find hidden patterns or intrinsic structures in input data.
+Deep Learning is part of a broader family of machine learning methods based on artificial neural networks with representation learning.
+Computer Vision is an interdisciplinary scientific field that deals with how computers can gain high-level understanding from digital images or videos.

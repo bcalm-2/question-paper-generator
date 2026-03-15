@@ -25,7 +25,15 @@ class AuthService:
 
         session_id = str(uuid.uuid4())
         self.sessions[session_id] = user_id
-        return {"message": "User registered successfully", "session_id": session_id, "user_id": user_id}, 201
+        return {
+            "message": "User registered successfully",
+            "session_id": session_id,
+            "user": {
+                "id": user_id,
+                "name": name,
+                "email": email
+            }
+        }, 201
 
     def login(self, data):
         email = data.get("email")
@@ -49,3 +57,6 @@ class AuthService:
             }, 200
 
         return {"error": "Invalid credentials"}, 401
+
+    def get_user_id_by_session(self, session_id):
+        return self.sessions.get(session_id)

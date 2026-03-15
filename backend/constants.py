@@ -46,12 +46,14 @@ CREATE TABLE IF NOT EXISTS questions (
 TABLES['papers'] = """
 CREATE TABLE IF NOT EXISTS papers (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
     subject VARCHAR(100) NOT NULL,
     title VARCHAR(255) NOT NULL,
     marks INT NOT NULL,
     duration VARCHAR(50) NOT NULL,
     difficulty VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 """
 
@@ -62,6 +64,16 @@ CREATE TABLE IF NOT EXISTS paper_questions (
     question_id INT NOT NULL,
     marks INT DEFAULT 0,
     FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+"""
+
+TABLES['question_options'] = """
+CREATE TABLE IF NOT EXISTS question_options (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question_id INT NOT NULL,
+    option_text TEXT NOT NULL,
+    is_correct BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 """

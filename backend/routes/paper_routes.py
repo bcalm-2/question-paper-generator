@@ -7,6 +7,7 @@ from text_extractor import TextExtractor
 from nlp_analyzer import NLPAnalyzer
 from bloom_classifier import BloomClassifier
 from pdf_generator import PDFGenerator
+from routes.auth_routes import auth_service
 
 paper_bp = Blueprint('paper', __name__)
 
@@ -22,7 +23,7 @@ paper_service = PaperService(paper_repo, extractor, analyzer, classifier, pdf_ge
 RESOURCE_FOLDER = "resources"
 MAPPING_FILE = "mapping.json"
 
-@paper_bp.route("/upload", methods=["POST"])
+@paper_bp.route("/api/upload", methods=["POST"])
 def upload_file():
     if "file" not in request.files:
         return jsonify({"message": "No file uploaded"}), 400
@@ -59,27 +60,52 @@ def upload_file():
 
 @paper_bp.route("/api/papers", methods=["GET"])
 def get_papers():
-    result, status = paper_service.get_papers()
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    result, status = paper_service.get_papers(user_id)
     return jsonify(result), status
 
 @paper_bp.route("/api/papers/generate", methods=["POST"])
 def generate_paper():
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     data = request.get_json()
+    data["user_id"] = user_id
     result, status = paper_service.generate_paper(data)
     return jsonify(result), status
 
-@paper_bp.route("/api/papers/<int:paper_id>", methods=["GET"])
-def get_paper(paper_id):
-    result, status = paper_service.get_paper_details(paper_id)
+@paper_bp.route("/api/papers/<int:paper_id>", methods=["GET", "PUT"])
+def get_or_update_paper(paper_id):
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if request.method == "PUT":
+        data = request.get_json()
+        result, status = paper_service.update_paper_details(paper_id, data, user_id)
+        return jsonify(result), status
+    
+    result, status = paper_service.get_paper_details(paper_id, user_id)
     return jsonify(result), status
 
 @paper_bp.route("/api/papers/<int:paper_id>/download", methods=["GET"])
 def download_paper(paper_id):
-    result, status = paper_service.get_paper_pdf(paper_id)
+    session_id = request.headers.get("X-Session-Id")
+    user_id = auth_service.get_user_id_by_session(session_id)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    result, status = paper_service.get_paper_pdf(paper_id, user_id)
     if status == 200:
-        # We need subject and difficulty for filename, but paper details are already fetched in service
-        # For simplicity, we'll just use a generic name or fetch details here.
-        paper, _ = paper_service.get_paper_details(paper_id)
+        # result is the pdf_buffer
+        paper, _ = paper_service.get_paper_details(paper_id, user_id)
         filename = f"{paper['subject']}_{paper['difficulty']}_Paper.pdf".replace(" ", "_")
         return send_file(
             result,

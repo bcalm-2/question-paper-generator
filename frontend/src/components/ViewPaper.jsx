@@ -72,23 +72,29 @@ function ViewPaper() {
                         </div>
 
                         <div className="paper-content">
-                            {paper.sections && paper.sections.map((section, idx) => (
-                                <div key={idx} style={{ marginBottom: "2rem" }}>
-                                    <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
-                                    {section.questions.map((q) => (
-                                        <div key={q.id} style={{ marginBottom: "1rem" }}>
-                                            <p style={{ marginBottom: "0.5rem" }}>{q.id}. {q.text} {q.options && "(Multiple Choice)"}</p>
-                                            {q.options && (
-                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
-                                                    {q.options.map((opt, i) => (
-                                                        <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
-                                                    ))}
+                            {(() => {
+                                let questionCounter = 0;
+                                return paper.sections && paper.sections.map((section, idx) => (
+                                    <div key={idx} style={{ marginBottom: "2rem" }}>
+                                        <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
+                                        {section.questions.map((q) => {
+                                            questionCounter++;
+                                            return (
+                                                <div key={q.id} style={{ marginBottom: "1rem" }}>
+                                                    <p style={{ marginBottom: "0.5rem" }}>{questionCounter}. {q.text} {q.options && "(Multiple Choice)"}</p>
+                                                    {q.options && (
+                                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
+                                                            {q.options.map((opt, i) => (
+                                                                <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
+                                            );
+                                        })}
+                                    </div>
+                                ));
+                            })()}
                         </div>
                     </div>
                 </div>

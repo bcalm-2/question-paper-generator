@@ -1,16 +1,16 @@
 from .base_repository import BaseRepository
 
 class PaperRepository(BaseRepository):
-    def get_all(self):
-        return self.execute_query("SELECT * FROM papers ORDER BY created_at DESC")
+    def get_all(self, user_id):
+        return self.execute_query("SELECT * FROM papers WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
 
     def get_by_id(self, paper_id):
         result = self.execute_query("SELECT * FROM papers WHERE id = %s", (paper_id,))
         return result[0] if result else None
 
-    def create_paper(self, subject, title, marks, duration, difficulty):
-        query = "INSERT INTO papers (subject, title, marks, duration, difficulty) VALUES (%s, %s, %s, %s, %s)"
-        params = (subject, title, marks, duration, difficulty)
+    def create_paper(self, user_id, subject, title, marks, duration, difficulty):
+        query = "INSERT INTO papers (user_id, subject, title, marks, duration, difficulty) VALUES (%s, %s, %s, %s, %s, %s)"
+        params = (user_id, subject, title, marks, duration, difficulty)
         return self.execute_query(query, params, commit=True)
 
     def create_question(self, text, level, difficulty, q_type):
@@ -31,3 +31,16 @@ class PaperRepository(BaseRepository):
         WHERE pq.paper_id = %s
         """
         return self.execute_query(query, (paper_id,))
+
+    def update_paper(self, paper_id, subject, title, marks, duration, difficulty):
+        query = "UPDATE papers SET subject = %s, title = %s, marks = %s, duration = %s, difficulty = %s WHERE id = %s"
+        params = (subject, title, marks, duration, difficulty, paper_id)
+        return self.execute_query(query, params, commit=True)
+
+    def add_question_option(self, question_id, text, is_correct):
+        query = "INSERT INTO question_options (question_id, option_text, is_correct) VALUES (%s, %s, %s)"
+        params = (question_id, text, is_correct)
+        return self.execute_query(query, params, commit=True)
+
+    def get_options_by_question_id(self, question_id):
+        return self.execute_query("SELECT * FROM question_options WHERE question_id = %s", (question_id,))

@@ -60,12 +60,14 @@ class PDFGenerator:
         elements.append(Spacer(1, 24))
 
         # 3. Sections and Questions
+        q_count = 0
         for section in paper_data.get('sections', []):
             elements.append(Paragraph(f"<b>{section['name']} ({section['marks']} Marks)</b>", self.styles['Heading3']))
             elements.append(Spacer(1, 10))
             
-            for i, q in enumerate(section.get('questions', [])):
-                q_text = f"{i+1}. {q.get('text')}"
+            for q in section.get('questions', []):
+                q_count += 1
+                q_text = f"{q_count}. {q.get('text')}"
                 if 'marks' in q:
                     q_text += f" [{q['marks']} Marks]"
                 
