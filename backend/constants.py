@@ -1,5 +1,7 @@
+from services.config_service import config_service
+
 # Database Configuration
-DB_NAME = "question_paper_gen"
+DB_NAME = config_service.get("DB_NAME", "question_paper_gen")
 
 # Database Tables
 TABLES = {}

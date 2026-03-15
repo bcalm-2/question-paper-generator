@@ -7,12 +7,18 @@ from constants import DB_NAME, TABLES
 # Configuration
 # ----------------------------
 def get_db_config():
-    return {
+    config = {
         'host': config_service.get("DB_HOST"),
         'user': config_service.get("DB_USER"),
         'password': config_service.get("DB_PASSWORD"),
         'database': config_service.get("DB_NAME", DB_NAME)
     }
+    
+    port = config_service.get("DB_PORT")
+    if port:
+        config['port'] = int(port)
+        
+    return config
 
 def get_db_connection():
     try:
@@ -30,10 +36,14 @@ def init_db():
     try:
         # Connect without DB first to create it if it doesn't exist
         temp_config = {
-            'host': os.getenv("DB_HOST"),
-            'user': os.getenv("DB_USER"),
-            'password': os.getenv("DB_PASSWORD")
+            'host': config_service.get("DB_HOST"),
+            'user': config_service.get("DB_USER"),
+            'password': config_service.get("DB_PASSWORD")
         }
+        
+        port = config_service.get("DB_PORT")
+        if port:
+            temp_config['port'] = int(port)
         
         if not all(temp_config.values()):
             print("Error: Missing database credentials for initialization.")
