@@ -1,24 +1,24 @@
-import spacy
-import nltk
-from nltk.stem import WordNetLemmatizer
-from nltk.corpus import wordnet
-
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-
+from utils.model_loader import ModelLoader
 from constants import BLOOM_VERBS, BLOOM_PRIORITY
 
 
 class BloomClassifier:
 
     def __init__(self):
-        self.nlp = spacy.load("en_core_web_sm")
-        self.lemmatizer = WordNetLemmatizer()
         self.bloom_verbs = BLOOM_VERBS
         self.priority = BLOOM_PRIORITY
 
+    def _get_nlp(self):
+        return ModelLoader.get_spacy_model()
+
+    def _get_lemmatizer(self):
+        return ModelLoader.get_lemmatizer()
+
+    def _get_wordnet(self):
+        return ModelLoader.get_wordnet()
+
     def extract_verbs(self, sentence):
-        doc = self.nlp(sentence)
+        doc = self._get_nlp()(sentence)
         verbs = []
 
         for token in doc:
@@ -28,8 +28,10 @@ class BloomClassifier:
         return verbs
 
     def lemmatize_verbs(self, verbs):
+        lemmatizer = self._get_lemmatizer()
+        wordnet = self._get_wordnet()
         return [
-            self.lemmatizer.lemmatize(v.lower(), wordnet.VERB)
+            lemmatizer.lemmatize(v.lower(), wordnet.VERB)
             for v in verbs
         ]
 
