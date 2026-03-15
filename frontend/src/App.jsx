@@ -5,6 +5,7 @@ import Register from "./components/Register";
 import CreatePaper from "./components/CreatePaper";
 import Dashboard from "./components/Dashboard";
 import ViewPaper from "./components/ViewPaper";
+import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
 function App() {
@@ -29,11 +30,39 @@ function App() {
             }
           />
 
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/create-paper" element={<CreatePaper />} />
-          <Route path="/edit-paper/:id" element={<CreatePaper />} />
-          <Route path="/paper/:id" element={<ViewPaper />} />
+          <Route
+            path="/create-paper"
+            element={
+              <ProtectedRoute>
+                <CreatePaper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/edit-paper/:id"
+            element={
+              <ProtectedRoute>
+                <CreatePaper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/paper/:id"
+            element={
+              <ProtectedRoute>
+                <ViewPaper />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </div>
     </BrowserRouter>

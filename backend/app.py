@@ -4,6 +4,14 @@ from flask_cors import CORS
 from db_config import init_db
 from routes.auth_routes import auth_bp
 from routes.paper_routes import paper_bp
+import logging
+
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Initialize Database
 init_db()
@@ -32,21 +40,25 @@ app.register_blueprint(paper_bp)
 @app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
+    logger.info("Health check endpoint called")
     return jsonify({"status": "ok", "message": "Server is running"}), 200
 
 from routes.auth_routes import auth_service
 
 @app.route("/api/config", methods=["GET"])
 def get_config():
+    logger.info("Fetching application configuration")
     session_id = request.headers.get("X-Session-Id")
     user_id = auth_service.get_user_id_by_session(session_id)
     if not user_id:
+        logger.warning("Unauthorized access attempt to /api/config")
         return jsonify({"error": "Unauthorized"}), 401
 
     config = {
         "SUBJECT_TOPICS": SUBJECT_TOPICS,
         "BLOOMS": BLOOMS
     }
+    logger.info("Config fetched successfully")
     return jsonify(config), 200
 
 if __name__ == "__main__":

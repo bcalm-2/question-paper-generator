@@ -31,7 +31,8 @@ class NLPAnalyzer:
                 formatted_q = self._format_as_question(sent, category)
                 # Extract subject for distractors/options
                 doc_sent = sent.as_doc() if hasattr(sent, 'as_doc') else sent
-                subject = next(sent.noun_chunks).text if list(sent.noun_chunks) else None
+                noun_chunks = list(sent.noun_chunks)
+                subject = noun_chunks[0].text if noun_chunks else None
                 
                 sentences.append({
                     "text": sent_text,

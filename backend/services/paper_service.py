@@ -1,6 +1,9 @@
 import os
 import json
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PaperService:
     def __init__(self, paper_repo, extractor, analyzer, classifier, pdf_gen):
@@ -39,13 +42,17 @@ class PaperService:
             return {"error": f"No reference files found for subject {subject}. Please upload a file first."}, 400
 
         file_path = os.path.join(self.RESOURCE_FOLDER, subject_files[0])
+        logger.info(f"Extracting text from reference file: {file_path}")
         try:
             raw_text = self.extractor.extract(file_path)
+            logger.info(f"Extracted {len(raw_text)} characters")
         except Exception as e:
             return {"error": f"Failed to extract text from file: {str(e)}"}, 500
 
+        logger.info("Starting NLP analysis and keyword extraction...")
         analysis = self.analyzer.analyze(raw_text)
         worthy_data = analysis["question_worthy_sentences"]
+        logger.info(f"Found {len(worthy_data)} question-worthy sentences and {len(analysis['keywords'])} keywords")
 
         potential_questions = []
         for qd in worthy_data:
@@ -72,6 +79,7 @@ class PaperService:
             ]
         
         # Limit to requested number of questions
+        logger.info(f"Selected {len(potential_questions)} base questions after topic/bloom filtering")
         potential_questions = potential_questions[:num_questions]
 
         # Selection logic (Split between MCQ and Descriptive)
@@ -106,6 +114,7 @@ class PaperService:
             })
 
         # Save to Repo
+        logger.info(f"Finalizing paper: {len(mcqs)} MCQs, {len(short_answers)} Descriptive questions")
         try:
             total_marks = (len(mcqs) * 2) + sum(q["marks"] for q in short_answers)
             title = f"{subject} {difficulty} Assessment"
