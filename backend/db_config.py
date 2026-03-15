@@ -55,15 +55,24 @@ def init_db():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
         cursor.execute(f"USE {DB_NAME}")
 
+        # Disable foreign key checks to allow dropping tables in any order
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        
+        # Drop tables in reverse order to handle dependencies if checks were enabled
+        # or simply iterate through them all
+        for table_name in reversed(list(TABLES.keys())):
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+            print(f"Table `{table_name}` dropped (if existed).")
+        
+        # Re-enable foreign key checks
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+
         for table_name in TABLES:
             try:
                 cursor.execute(TABLES[table_name])
                 print(f"Table `{table_name}` created successfully.")
             except mysql.connector.Error as err:
-                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    pass # Table already exists
-                else:
-                    print(f"Error creating table {table_name}: {err.msg}")
+                print(f"Error creating table {table_name}: {err.msg}")
 
         cursor.close()
         cnx.close()
