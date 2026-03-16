@@ -7,7 +7,12 @@ class SubjectRepository(BaseRepository):
     def get_all_with_topics(self):
         """Fetches all subjects and their topics in a single JOIN query."""
         query = """
-        SELECT s.id as subject_id, s.name as subject_name, t.name as topic_name
+        SELECT 
+            s.id as subject_id, 
+            s.name as subject_name, 
+            s.description as subject_description,
+            t.id as topic_id, 
+            t.name as topic_name
         FROM subjects s
         LEFT JOIN topics t ON s.id = t.subject_id
         ORDER BY s.name, t.name

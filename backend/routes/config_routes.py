@@ -3,6 +3,7 @@ import os
 import json
 from repositories.subject_repository import SubjectRepository, TopicRepository
 from routes.auth_routes import auth_service
+from utils.cache import ConfigCache
 import logging
 
 config_bp = Blueprint('config', __name__)
@@ -21,11 +22,36 @@ def get_subjects():
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    subjects = subject_repo.get_all()
-    for sub in subjects:
-        sub['topics'] = topic_repo.get_by_subject(sub['id'])
+    # Try cache first
+    cached_subjects = ConfigCache.get("admin_subjects")
+    if cached_subjects:
+        logger.info("Serving admin subjects from cache")
+        return jsonify(cached_subjects), 200
+
+    # Optimized single JOIN query
+    flat_data = subject_repo.get_all_with_topics()
     
-    return jsonify(subjects), 200
+    subjects_dict = {}
+    for row in flat_data:
+        sub_id = row['subject_id']
+        if sub_id not in subjects_dict:
+            subjects_dict[sub_id] = {
+                "id": sub_id,
+                "name": row['subject_name'],
+                "description": row['subject_description'],
+                "topics": []
+            }
+        
+        if row['topic_name']:
+            subjects_dict[sub_id]['topics'].append({
+                "id": row['topic_id'],
+                "name": row['topic_name']
+            })
+    
+    subjects_list = list(subjects_dict.values())
+    ConfigCache.set("admin_subjects", subjects_list)
+    
+    return jsonify(subjects_list), 200
 
 @config_bp.route("/api/admin/subjects", methods=["POST"])
 def add_subject():
@@ -45,6 +71,8 @@ def add_subject():
     for topic_name in topics:
         topic_repo.create(subject_id, topic_name)
 
+    ConfigCache.clear()
+    logger.info("Configuration cache invalidated due to new subject addition")
     return jsonify({"message": "Subject added successfully", "id": subject_id}), 201
 
 @config_bp.route("/api/admin/subjects/<int:subject_id>", methods=["DELETE"])
@@ -55,6 +83,8 @@ def delete_subject(subject_id):
         return jsonify({"error": "Unauthorized"}), 401
 
     subject_repo.delete(subject_id)
+    ConfigCache.clear()
+    logger.info(f"Configuration cache invalidated due to deletion of subject {subject_id}")
     return jsonify({"message": "Subject deleted successfully"}), 200
 
 @config_bp.route("/api/admin/files", methods=["GET"])

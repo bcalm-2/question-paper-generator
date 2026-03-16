@@ -11,7 +11,7 @@ class NLPAnalyzer:
         """Lazy loads the spaCy model from the shared loader."""
         return ModelLoader.get_spacy_model(self.model_name)
 
-    def analyze(self, text: str):
+    def analyze(self, text: str, classifier=None):
         nlp = self._get_model()
         doc = nlp(text)
 
@@ -35,8 +35,10 @@ class NLPAnalyzer:
 
             if is_worthy:
                 formatted_q = self._format_as_question(sent, category)
+                # Determine Bloom level immediately during analysis
+                bloom_level = classifier.classify_from_doc(sent) if classifier else "Understand"
+                
                 # Extract subject for distractors/options
-                doc_sent = sent.as_doc() if hasattr(sent, 'as_doc') else sent
                 noun_chunks = list(sent.noun_chunks)
                 subject = noun_chunks[0].text if noun_chunks else None
                 
@@ -44,13 +46,15 @@ class NLPAnalyzer:
                     "text": sent_text,
                     "question": formatted_q,
                     "category": category,
-                    "subject": subject
+                    "subject": subject,
+                    "bloom_level": bloom_level
                 })
                 question_worthy.append({
                     "original": sent_text,
                     "question": formatted_q,
                     "category": category,
-                    "subject": subject
+                    "subject": subject,
+                    "bloom_level": bloom_level
                 })
 
         # Enhanced keyword extraction (nouns and proper nouns are better for distractors)

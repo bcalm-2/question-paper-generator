@@ -14,6 +14,7 @@ class PaperService:
         self.pdf_gen = pdf_gen
         self.RESOURCE_FOLDER = "resources"
         self.MAPPING_FILE = "mapping.json"
+        self._analysis_cache = {}  # In-memory cache for superfast generation
 
     def get_papers(self, user_id):
         papers = self.paper_repo.get_all(user_id)
@@ -65,22 +66,29 @@ class PaperService:
         if not os.path.exists(file_path):
             return {"error": "Critical: Neither subject reference nor general fallback found. Please contact admin."}, 500
 
-        logger.info(f"Extracting text from: {file_path}")
-        try:
-            raw_text = self.extractor.extract(file_path)
-            logger.info(f"Extracted {len(raw_text)} characters")
-        except Exception as e:
-            return {"error": f"Failed to extract text from file: {str(e)}"}, 500
+        # Check Caching for Superfast Performance
+        if file_path in self._analysis_cache:
+            logger.info(f"Using cached analysis for: {file_path}")
+            analysis = self._analysis_cache[file_path]
+        else:
+            logger.info(f"Fresh extraction and analysis for: {file_path}")
+            try:
+                raw_text = self.extractor.extract(file_path)
+            except Exception as e:
+                return {"error": f"Failed to extract text from file: {str(e)}"}, 500
 
-        logger.info("Starting NLP analysis and keyword extraction...")
-        analysis = self.analyzer.analyze(raw_text)
+            logger.info("Starting NLP analysis and keyword extraction...")
+            analysis = self.analyzer.analyze(raw_text, classifier=self.classifier)
+            self._analysis_cache[file_path] = analysis
+
         worthy_data = analysis["question_worthy_sentences"]
-        logger.info(f"Found {len(worthy_data)} question-worthy sentences and {len(analysis['keywords'])} keywords")
+        logger.info(f"Found {len(worthy_data)} suitable segments and {len(analysis['keywords'])} keywords")
 
         potential_questions = []
         for qd in worthy_data:
             sent = qd["original"]
-            level = self.classifier.classify(sent)
+            level = qd["bloom_level"]  # Now comes pre-analyzed and superfast
+            
             matches_topic = any(topic.lower() in sent.lower() for topic in topics)
             if matches_topic and level in blooms:
                 potential_questions.append({
@@ -91,15 +99,14 @@ class PaperService:
                 })
 
         if not potential_questions:
-            potential_questions = [
-                {
+            # Fallback to general questions from the segment
+            for d in worthy_data[:num_questions]:
+                potential_questions.append({
                     "text": d["question"], 
-                    "level": self.classifier.classify(d["original"]), 
+                    "level": d["bloom_level"], 
                     "original": d["original"],
                     "subject": d.get("subject")
-                }
-                for d in worthy_data[:num_questions]
-            ]
+                })
         
         # Limit to requested number of questions
         logger.info(f"Selected {len(potential_questions)} base questions after topic/bloom filtering")
@@ -136,25 +143,43 @@ class PaperService:
                 "marks": 5 if difficulty == "Medium" else (3 if difficulty == "Easy" else 10)
             })
 
-        # Save to Repo
+        # Save to Repo (Optimized Batch Inserts)
         logger.info(f"Finalizing paper: {len(mcqs)} MCQs, {len(short_answers)} Descriptive questions")
         try:
             total_marks = (len(mcqs) * 2) + sum(q["marks"] for q in short_answers)
             title = f"{subject_name} {difficulty} Assessment"
             paper_id = self.paper_repo.create_paper(data.get("user_id"), subject_id, title, total_marks, "90 Mins", difficulty)
 
+            # Prepare data for bulk save
+            questions_to_save = []
+            
             for q in mcqs:
-                qid = self.paper_repo.create_question(q["text"], q["level"], difficulty, 'MCQ')
-                self.paper_repo.link_question_to_paper(paper_id, qid, 2)
-                for opt in q["options"]:
-                    self.paper_repo.add_question_option(qid, opt["text"], opt["is_correct"])
+                questions_to_save.append({
+                    "text": q["text"],
+                    "level": q["level"],
+                    "difficulty": difficulty,
+                    "type": "MCQ",
+                    "marks": 2,
+                    "options": q["options"]
+                })
 
             for q in short_answers:
-                qid = self.paper_repo.create_question(q["text"], q["level"], difficulty, 'Descriptive')
-                self.paper_repo.link_question_to_paper(paper_id, qid, q["marks"])
+                questions_to_save.append({
+                    "text": q["text"],
+                    "level": q["level"],
+                    "difficulty": difficulty,
+                    "type": "Descriptive",
+                    "marks": q["marks"]
+                })
+
+            # Execute High-Performance Bulk Save
+            success = self.paper_repo.save_batch_questions(paper_id, questions_to_save)
+            if not success:
+                raise Exception("Bulk save operation failed")
 
             return {"message": "Paper generated successfully", "paperId": paper_id}, 201
         except Exception as e:
+            logger.error(f"Failed to save paper: {e}")
             return {"error": f"Failed to save paper: {str(e)}"}, 500
 
     def get_paper_details(self, paper_id, user_id):

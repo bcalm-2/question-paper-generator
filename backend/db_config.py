@@ -2,6 +2,9 @@ from services.config_service import config_service
 import mysql.connector
 from mysql.connector import errorcode, pooling
 from constants import DB_NAME, TABLES
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------
 # Configuration
@@ -79,8 +82,13 @@ def init_db():
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
         cursor.execute(f"USE {DB_NAME}")
 
-        # Tables will be created if they don't exist
+        # Drop existing tables to ensure a clean state (as requested for performance/testing)
+        logger.info("Dropping existing tables for reset...")
+        for table_name in reversed(list(TABLES.keys())):
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+            print(f"Dropped table `{table_name}`")
 
+        # Tables will be created fresh
         for table_name in TABLES:
             try:
                 cursor.execute(TABLES[table_name])
@@ -101,6 +109,27 @@ def init_db():
                 for topic_name in topics:
                     cursor.execute("INSERT INTO topics (subject_id, name) VALUES (%s, %s)", (subject_id, topic_name))
                 print(f"Seeded {len(topics)} topics for {subject_name}")
+
+        # Add explicit indexes for performance (if they don't exist via table def)
+        logger.info("Checking for missing performance indexes...")
+        indexes_to_add = [
+            ("subjects", "idx_sub_name", "name"),
+            ("topics", "idx_topic_name", "name"),
+            ("questions", "idx_q_bloom", "bloom_level"),
+            ("questions", "idx_q_difficulty", "difficulty"),
+            ("papers", "idx_p_created", "created_at")
+        ]
+
+        for table, idx_name, column in indexes_to_add:
+            try:
+                # Safer check for MySQL: try to create and catch "already exists" error
+                cursor.execute(f"CREATE INDEX {idx_name} ON {table} ({column})")
+                print(f"Applied index {idx_name} on {table}({column})")
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_DUP_KEYNAME:
+                    logger.debug(f"Index {idx_name} already exists on {table}")
+                else:
+                    print(f"Warning: Could not apply index {idx_name}: {err.msg}")
 
         cnx.commit()
         cursor.close()

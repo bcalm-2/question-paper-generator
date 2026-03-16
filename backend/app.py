@@ -24,8 +24,8 @@ else:
 app = Flask(__name__)
 
 # Production-ready CORS
-allowed_origins = config_service.get("ALLOWED_ORIGINS", "").split(",")
-if not any(allowed_origins):
+allowed_origins = [o.strip() for o in config_service.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if not allowed_origins:
     if config_service.get("FLASK_ENV") != "development":
         raise RuntimeError("ALLOWED_ORIGINS environment variable is missing!")
     allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
@@ -60,6 +60,12 @@ def get_config():
         logger.warning("Unauthorized access attempt to /api/config")
         return jsonify({"error": "Unauthorized"}), 401
 
+    from utils.cache import ConfigCache
+    cached_config = ConfigCache.get("user_config")
+    if cached_config:
+        logger.info("Serving configuration from cache")
+        return jsonify(cached_config), 200
+
     from repositories.subject_repository import SubjectRepository
     sub_repo = SubjectRepository()
 
@@ -88,7 +94,9 @@ def get_config():
         "SUBJECTS": subjects, # New key for detailed ID-based access
         "BLOOMS": BLOOMS
     }
-    logger.info("Config fetched successfully")
+    
+    ConfigCache.set("user_config", config)
+    logger.info("Config fetched successfully and cached")
     return jsonify(config), 200
 
 if __name__ == "__main__":

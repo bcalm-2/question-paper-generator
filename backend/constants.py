@@ -19,7 +19,8 @@ TABLES['subjects'] = """
 CREATE TABLE IF NOT EXISTS subjects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    description TEXT
+    description TEXT,
+    INDEX (name)
 );
 """
 
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS topics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     subject_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+    INDEX (name)
 );
 """
 
@@ -40,7 +41,8 @@ CREATE TABLE IF NOT EXISTS questions (
     bloom_level VARCHAR(50) NOT NULL,
     difficulty VARCHAR(50) NOT NULL,
     question_type ENUM('MCQ','Descriptive') NOT NULL,
-    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL
+    INDEX (bloom_level),
+    INDEX (difficulty)
 );
 """
 
@@ -54,8 +56,7 @@ CREATE TABLE IF NOT EXISTS papers (
     duration VARCHAR(50) NOT NULL,
     difficulty VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+    INDEX (created_at)
 );
 """
 
@@ -64,9 +65,7 @@ CREATE TABLE IF NOT EXISTS paper_questions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paper_id INT NOT NULL,
     question_id INT NOT NULL,
-    marks INT DEFAULT 0,
-    FOREIGN KEY (paper_id) REFERENCES papers(id) ON DELETE CASCADE,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+    marks INT DEFAULT 0
 );
 """
 
@@ -75,8 +74,7 @@ CREATE TABLE IF NOT EXISTS question_options (
     id INT AUTO_INCREMENT PRIMARY KEY,
     question_id INT NOT NULL,
     option_text TEXT NOT NULL,
-    is_correct BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+    is_correct BOOLEAN DEFAULT FALSE
 );
 """
 
