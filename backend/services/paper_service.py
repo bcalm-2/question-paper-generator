@@ -195,13 +195,14 @@ class PaperService:
         mcqs = [q for q in questions if q['question_type'] == 'MCQ']
         short_answers = [q for q in questions if q['question_type'] == 'Descriptive']
 
-        for q in mcqs:
-            q["text"] = q["question_text"]
-            options = self.paper_repo.get_options_by_question_id(q["id"])
-            if options:
-                q["options"] = [opt["option_text"] for opt in options]
-            else:
-                q["options"] = ["Option A", "Option B", "Option C", "Option D"]
+        # Batch fetch all MCQ options in a single query (eliminates N+1)
+        if mcqs:
+            mcq_ids = [q["id"] for q in mcqs]
+            all_options = self.paper_repo.get_options_by_question_ids(mcq_ids)
+            for q in mcqs:
+                q["text"] = q["question_text"]
+                opts = all_options.get(q["id"], [])
+                q["options"] = [opt["option_text"] for opt in opts] if opts else ["Option A", "Option B", "Option C", "Option D"]
             
         for q in short_answers:
             q["text"] = q["question_text"]
@@ -225,13 +226,13 @@ class PaperService:
     def get_paper_pdf(self, paper_id, user_id):
         paper, status = self.get_paper_details(paper_id, user_id)
         if status != 200:
-            return paper, status
+            return None, paper, status
 
         try:
             pdf_buffer = self.pdf_gen.generate_pdf(paper)
-            return pdf_buffer, 200
+            return pdf_buffer, paper, 200
         except Exception as e:
-            return {"error": f"Failed to generate PDF: {str(e)}"}, 500
+            return None, {"error": f"Failed to generate PDF: {str(e)}"}, 500
 
     def update_paper_details(self, paper_id, data, user_id):
         try:

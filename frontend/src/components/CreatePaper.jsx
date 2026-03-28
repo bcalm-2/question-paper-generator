@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "../App.css";
 import { getConfig, generatePaper, uploadFile, getPaperById, updatePaper } from "../services/paperService.js";
+
+const STEPS = ["Subject", "Topics", "Blooms", "Difficulty"];
+
+function stepIndex(subjectId, topics, blooms, difficulty) {
+  if (!subjectId) return 0;
+  if (topics.length === 0) return 1;
+  if (blooms.length === 0) return 2;
+  if (!difficulty) return 3;
+  return 4;
+}
 
 function CreatePaper() {
   const navigate = useNavigate();
@@ -12,18 +21,18 @@ function CreatePaper() {
   const [topics, setTopics] = useState([]);
   const [blooms, setBlooms] = useState([]);
   const [difficulty, setDifficulty] = useState("");
-
   const [config, setConfig] = useState({ SUBJECT_TOPICS: {}, SUBJECTS: [], BLOOMS: [] });
   const [loading, setLoading] = useState(true);
-  const [uploadStatus, setUploadStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const configData = await getConfig();
         setConfig(configData);
-
         if (isEditMode) {
           const paperData = await getPaperById(id);
           setSelectedSubjectId(paperData.subject_id);
@@ -40,206 +49,183 @@ function CreatePaper() {
     fetchData();
   }, [id, isEditMode]);
 
-  const SUBJECT_TOPICS = config.SUBJECT_TOPICS;
-  const SUBJECTS = config.SUBJECTS;
-  const BLOOMS = config.BLOOMS;
-
-  // Find subject name for UI display and mapping
-  const currentSubjectObj = SUBJECTS.find(s => s.id == selectedSubjectId);
-  const subjectName = currentSubjectObj ? currentSubjectObj.name : "";
-
-  const toggle = (value, list, setList) => {
-    setList(
-      list.includes(value)
-        ? list.filter(i => i !== value)
-        : [...list, value]
-    );
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
   };
+
+  const { SUBJECT_TOPICS, SUBJECTS, BLOOMS } = config;
+  const currentSubjectObj = SUBJECTS.find(s => s.id == selectedSubjectId);
+  const subjectName = currentSubjectObj?.name ?? "";
+
+  const toggle = (value, list, setList) =>
+    setList(list.includes(value) ? list.filter(i => i !== value) : [...list, value]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    if (!selectedSubjectId) {
-      alert("Please select a subject first.");
-      e.target.value = null;
-      return;
-    }
-
-    setUploadStatus("Uploading...");
+    if (!selectedSubjectId) { showToast("Please select a subject first.", "error"); e.target.value = null; return; }
+    setUploadStatus("uploading");
     try {
       await uploadFile(file, selectedSubjectId);
       setUploadedFile(file.name);
-      setUploadStatus("Upload Successful");
-    } catch (err) {
-      console.error("Upload failed", err);
-      setUploadStatus("Upload Failed");
+      setUploadStatus("success");
+    } catch {
+      setUploadStatus("error");
       setUploadedFile(null);
     }
   };
 
   const submitHandler = async () => {
-    const data = {
-      subject_id: selectedSubjectId,
-      topics,
-      blooms,
-      difficulty
-    };
+    setSubmitting(true);
     try {
       if (isEditMode) {
-        await updatePaper(id, data);
-        alert("Paper updated successfully!");
+        await updatePaper(id, { subject_id: selectedSubjectId, topics, blooms, difficulty });
+        showToast("Paper updated successfully!");
         navigate(`/paper/${id}`);
       } else {
-        const result = await generatePaper(data);
-        alert("Paper generated successfully!");
+        const result = await generatePaper({ subject_id: selectedSubjectId, topics, blooms, difficulty });
+        showToast("Paper generated successfully!");
         navigate(`/paper/${result.paperId}`);
       }
     } catch (err) {
-      console.error(isEditMode ? "Update failed:" : "Generation failed:", err);
-      alert(`Failed to ${isEditMode ? "update" : "generate"} paper. Please try again.`);
+      showToast(`Failed to ${isEditMode ? "update" : "generate"} paper. Please try again.`, "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const disabled =
-    !selectedSubjectId || topics.length === 0 || blooms.length === 0 || !difficulty;
+  const disabled = !selectedSubjectId || topics.length === 0 || blooms.length === 0 || !difficulty;
+  const currentStep = stepIndex(selectedSubjectId, topics, blooms, difficulty);
+
+  if (loading) return <div className="spinner-outer"><div className="spinner" /></div>;
 
   return (
-    <div className="paper-container animate-fade-in">
-      <div className="glass-card">
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "var(--text-muted)",
-            marginBottom: "1rem",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontSize: "0.9rem"
-          }}
-        >
-          ← Back to Dashboard
-        </button>
-        <h2 className="title">{isEditMode ? "Edit Question Paper" : "Generate Question Paper"}</h2>
+    <div className="animate-fade">
+      <button className="back-btn" onClick={() => navigate("/dashboard")}>← Back</button>
 
-        {/* Subject Selection */}
-        <div className="form-section">
-          <label className="section-title">Select Subject</label>
+      <h1 className="page-title">{isEditMode ? "Edit Paper" : "Generate Paper"}</h1>
+      <p className="page-subtitle">{isEditMode ? "Update paper settings" : "Configure your AI-generated question paper"}</p>
+
+      {/* Step indicator */}
+      <div className="steps">
+        {STEPS.map((label, i) => (
+          <div key={label} className={`step ${i === currentStep ? "active" : ""} ${i < currentStep ? "done" : ""}`}>
+            {i > 0 && <div className="step-connector" />}
+            <div className="step-num">{i < currentStep ? "✓" : i + 1}</div>
+            <span className="step-label">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+
+        {/* Subject */}
+        <div>
+          <label className="section-title">Subject</label>
           <select
             value={selectedSubjectId}
-            onChange={e => {
-              setSelectedSubjectId(e.target.value);
-              setTopics([]);
-            }}
+            onChange={e => { setSelectedSubjectId(e.target.value); setTopics([]); }}
           >
-            <option value="">-- Choose a Subject --</option>
-            {SUBJECTS.map(sub => (
-              <option key={sub.id} value={sub.id}>{sub.name}</option>
-            ))}
+            <option value="">— Choose a subject —</option>
+            {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
 
-        {/* Topics Selection */}
+        {/* Topics */}
         {selectedSubjectId && subjectName && SUBJECT_TOPICS[subjectName] && (
-          <div className="form-section animate-fade-in">
-            <label className="section-title">Select Topics for {subjectName}</label>
+          <div className="animate-fade">
+            <label className="section-title">Topics for {subjectName}</label>
             <div className="chips-grid">
               {SUBJECT_TOPICS[subjectName].map(topic => (
                 <div
                   key={topic}
-                  className={`chip ${topics.includes(topic) ? 'active' : ''}`}
+                  className={`chip ${topics.includes(topic) ? "active" : ""}`}
                   onClick={() => toggle(topic, topics, setTopics)}
-                >
-                  {topic}
-                </div>
+                >{topic}</div>
               ))}
             </div>
           </div>
         )}
 
-        {/* File Upload Section */}
+        {/* File upload */}
         {selectedSubjectId && (
-          <div className="form-section animate-fade-in">
-            <label className="section-title">Reference Material (Optional)</label>
-            <div style={{
-              border: '2px dashed var(--border)',
-              padding: '2rem',
-              borderRadius: '8px',
-              textAlign: 'center',
-              background: 'rgba(255,255,255,0.02)'
-            }}>
-              <input
-                type="file"
-                accept=".pdf,.txt"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" style={{ cursor: 'pointer', display: 'block' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📄</div>
-                <p style={{ marginBottom: '0.5rem' }}>Click to upload PDF or TXT</p>
-                <p className="text-muted" style={{ fontSize: '0.8rem' }}>
-                  {uploadedFile ? `Selected: ${uploadedFile}` : "Supported formats: .pdf, .txt"}
+          <div className="animate-fade">
+            <label className="section-title">Reference Material <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+            <input type="file" accept=".pdf,.txt" onChange={handleFileChange} style={{ display: "none" }} id="file-upload" />
+            <label htmlFor="file-upload">
+              <div className={`upload-zone ${uploadStatus === "uploading" ? "drag-over" : ""}`}>
+                <div className="upload-icon">
+                  {uploadStatus === "success" ? "✅" : uploadStatus === "error" ? "❌" : "📄"}
+                </div>
+                <p style={{ fontWeight: 500 }}>Click to upload PDF or TXT</p>
+                <p className="upload-hint">
+                  {uploadedFile ? `Selected: ${uploadedFile}` : "Supported: .pdf, .txt"}
                 </p>
-              </label>
-              {uploadStatus && (
-                <p style={{
-                  marginTop: '1rem',
-                  color: uploadStatus.includes("Failed") ? "#ef4444" : "#22c55e",
-                  fontSize: '0.9rem'
-                }}>
-                  {uploadStatus}
-                </p>
-              )}
-            </div>
+                {uploadStatus === "success" && <p className="upload-success">Upload successful!</p>}
+                {uploadStatus === "error" && <p className="upload-error">Upload failed. Try again.</p>}
+                {uploadStatus === "uploading" && <p className="upload-hint">Uploading…</p>}
+              </div>
+            </label>
           </div>
         )}
 
-        {/* Bloom's Taxonomy */}
-        <div className="form-section">
+        {/* Bloom's */}
+        <div>
           <label className="section-title">Bloom's Taxonomy Levels</label>
           <div className="chips-grid">
             {BLOOMS.map(level => (
               <div
                 key={level}
-                className={`chip ${blooms.includes(level) ? 'active' : ''}`}
+                className={`chip ${blooms.includes(level) ? "active" : ""}`}
                 onClick={() => toggle(level, blooms, setBlooms)}
-              >
-                {level}
-              </div>
+              >{level}</div>
             ))}
           </div>
         </div>
 
-        {/* Difficulty Selection */}
-        <div className="form-section">
+        {/* Difficulty */}
+        <div>
           <label className="section-title">Difficulty Level</label>
           <div className="difficulty-grid">
-            {["Easy", "Medium", "Hard"].map(d => (
+            {[
+              { label: "Easy", emoji: "🟢" },
+              { label: "Medium", emoji: "🟡" },
+              { label: "Hard", emoji: "🔴" },
+            ].map(({ label, emoji }) => (
               <div
-                key={d}
-                className={`difficulty-card ${difficulty === d ? 'active' : ''}`}
-                onClick={() => setDifficulty(d)}
+                key={label}
+                className={`difficulty-card ${difficulty === label ? "active" : ""}`}
+                onClick={() => setDifficulty(label)}
               >
-                <span className="label">{d}</span>
+                <span className="emoji">{emoji}</span>
+                <span className="label">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Action Button */}
         <button
-          className="btn-primary"
-          disabled={disabled}
+          className="btn btn-primary btn-full"
+          disabled={disabled || submitting}
           onClick={submitHandler}
-          style={{ marginTop: '2rem' }}
         >
-          {disabled ? "Complete all fields to proceed" : (isEditMode ? "Update Question Paper" : "Generate Question Paper")}
+          {submitting
+            ? (isEditMode ? "Updating…" : "Generating…")
+            : disabled
+              ? "Complete all steps above"
+              : (isEditMode ? "Update Paper" : "Generate Paper ✨")}
         </button>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="toast-container">
+          <div className={`toast toast-${toast.type}`}>
+            {toast.type === "success" ? "✅" : "❌"} {toast.msg}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

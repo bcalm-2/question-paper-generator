@@ -1,6 +1,5 @@
-
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getPaperById, downloadPaperPDF } from "../services/paperService.js";
 
 function ViewPaper() {
@@ -8,106 +7,105 @@ function ViewPaper() {
     const navigate = useNavigate();
     const [paper, setPaper] = useState(null);
     const [loading, setLoading] = useState(true);
-    const paperRef = useRef();
+    const [downloading, setDownloading] = useState(false);
+
+    useEffect(() => {
+        getPaperById(id)
+            .then(setPaper)
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, [id]);
 
     const handleDownload = async () => {
+        setDownloading(true);
         try {
             await downloadPaperPDF(id);
-        } catch (err) {
-            console.error("Download failed:", err);
+        } catch {
             alert("Failed to download PDF. Please try again.");
+        } finally {
+            setDownloading(false);
         }
     };
 
-    useEffect(() => {
-        const fetchPaper = async () => {
-            try {
-                const data = await getPaperById(id);
-                setPaper(data);
-            } catch (err) {
-                console.error("Failed to fetch paper:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPaper();
-    }, [id]);
+    if (loading) return <div className="spinner-outer"><div className="spinner" /></div>;
 
-    if (loading) return <div className="paper-container"><p className="text-muted">Loading paper...</p></div>;
-    if (!paper) return <div className="paper-container"><p className="text-muted">Paper not found.</p></div>;
+    if (!paper) return (
+        <div className="empty-state">
+            <div className="empty-icon">🔍</div>
+            <div className="empty-title">Paper not found</div>
+            <button className="btn btn-secondary" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
+        </div>
+    );
+
+    let questionCounter = 0;
 
     return (
-        <div className="paper-container animate-fade-in">
-            <div className="glass-card">
-                <button
-                    onClick={() => navigate("/dashboard")}
-                    style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--text-muted)",
-                        marginBottom: "1rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        fontSize: "0.9rem"
-                    }}
-                >
-                    ← Back to Dashboard
-                </button>
+        <div className="animate-fade">
+            <button className="back-btn" onClick={() => navigate("/dashboard")}>← Back</button>
 
-                <h1 className="title" style={{ textAlign: "left" }}>Paper Details</h1>
+            {/* Action bar */}
+            <div className="flex justify-between" style={{ alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div>
+                    <h1 className="page-title" style={{ marginBottom: "0.2rem" }}>Paper Preview</h1>
+                    <p className="page-subtitle" style={{ marginBottom: 0 }}>Review before downloading</p>
+                </div>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => navigate(`/edit-paper/${id}`)}
+                    >✏️ Edit</button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleDownload}
+                        disabled={downloading}
+                    >
+                        {downloading ? "Downloading…" : "⬇ Download PDF"}
+                    </button>
+                </div>
+            </div>
 
-                <div style={{ marginTop: "2rem", textAlign: "left" }}>
-                    <div ref={paperRef} style={{ background: "rgba(255,255,255,0.05)", padding: "2rem", borderRadius: "8px", color: "var(--text)" }}>
-                        <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between" }}>
-                            <div>
-                                <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>{paper.title}</h2>
-                                <p className="text-muted">Subject: {paper.subject}</p>
-                            </div>
-                            <div style={{ textAlign: "right" }}>
-                                <p style={{ fontWeight: "bold", fontSize: "1.1rem" }}>Max Marks: {paper.marks}</p>
-                                <p className="text-muted">Duration: {paper.duration}</p>
-                            </div>
-                        </div>
-
-                        <div className="paper-content">
-                            {(() => {
-                                let questionCounter = 0;
-                                return paper.sections && paper.sections.map((section, idx) => (
-                                    <div key={idx} style={{ marginBottom: "2rem" }}>
-                                        <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--primary)" }}>{section.name} ({section.marks} Marks)</h3>
-                                        {section.questions.map((q) => {
-                                            questionCounter++;
-                                            return (
-                                                <div key={q.id} style={{ marginBottom: "1rem" }}>
-                                                    <p style={{ marginBottom: "0.5rem" }}>{questionCounter}. {q.text} {q.options && "(Multiple Choice)"}</p>
-                                                    {q.options && (
-                                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingLeft: "1rem", color: "var(--text-muted)" }}>
-                                                            {q.options.map((opt, i) => (
-                                                                <span key={i}>{String.fromCharCode(97 + i)}) {opt}</span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ));
-                            })()}
+            {/* Exam sheet */}
+            <div className="exam-sheet">
+                <div className="exam-header">
+                    <div className="exam-header-left">
+                        <h2>{paper.title}</h2>
+                        <p>Subject: {paper.subject} · Difficulty: {paper.difficulty}</p>
+                    </div>
+                    <div className="exam-header-right">
+                        <div className="meta-val">{paper.marks}</div>
+                        <div className="meta-label">Total Marks</div>
+                        <div style={{ marginTop: "0.75rem" }}>
+                            <div className="meta-val" style={{ fontSize: "1.1rem" }}>{paper.duration}</div>
+                            <div className="meta-label">Duration</div>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-                    <button className="btn-primary" style={{ width: "auto" }} onClick={handleDownload}>Download PDF</button>
-                    <button
-                        className="btn-primary"
-                        style={{ width: "auto", background: "rgba(255,255,255,0.1)" }}
-                        onClick={() => navigate(`/edit-paper/${id}`)}
-                    >
-                        Edit
-                    </button>
+                <div className="exam-body">
+                    {paper.sections?.map((section, idx) => (
+                        <div key={idx} className="exam-section">
+                            <div className="exam-section-title">
+                                {section.name} — {section.marks} Marks
+                            </div>
+                            {section.questions.map((q) => {
+                                questionCounter++;
+                                return (
+                                    <div key={q.id} className="exam-question">
+                                        <p><strong>{questionCounter}.</strong> {q.text}</p>
+                                        {q.options && (
+                                            <div className="exam-options">
+                                                {q.options.map((opt, i) => (
+                                                    <span key={i} className="exam-option">
+                                                        {String.fromCharCode(97 + i)}) {opt}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

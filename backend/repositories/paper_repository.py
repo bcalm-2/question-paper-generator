@@ -58,60 +58,79 @@ class PaperRepository(BaseRepository):
     def get_options_by_question_id(self, question_id):
         return self.execute_query("SELECT * FROM question_options WHERE question_id = %s", (question_id,))
 
+    def get_options_by_question_ids(self, question_ids):
+        """Batch fetch options for multiple questions in a single round-trip.
+        Returns a dict: {question_id: [option_row, ...]}
+        """
+        if not question_ids:
+            return {}
+        placeholders = ", ".join(["%s"] * len(question_ids))
+        rows = self.execute_query(
+            f"SELECT * FROM question_options WHERE question_id IN ({placeholders})",
+            tuple(question_ids)
+        ) or []
+        result = {}
+        for row in rows:
+            result.setdefault(row["question_id"], []).append(row)
+        return result
+
     def save_batch_questions(self, paper_id, questions_data):
         """
-        High-performance save for all questions and options.
+        High-performance save using a single DB connection and transaction.
         questions_data: list of dicts {text, level, difficulty, type, marks, options}
         """
         if not questions_data:
             return True
 
-        # 1. Batch Insert Questions
-        q_query = "INSERT INTO questions (question_text, bloom_level, difficulty, question_type) VALUES (%s, %s, %s, %s)"
-        q_params = [(q['text'], q['level'], q['difficulty'], q['type']) for q in questions_data]
-        
-        # We need the IDs. In MySQL, executemany doesn't return them easily.
-        # So we'll use a single multi-row insert string to get LAST_INSERT_ID.
-        placeholders = ", ".join(["(%s, %s, %s, %s)"] * len(questions_data))
-        flat_q_params = []
-        for p in q_params:
-            flat_q_params.extend(p)
-            
-        full_q_query = f"INSERT INTO questions (question_text, bloom_level, difficulty, question_type) VALUES {placeholders}"
-        
         conn = self._get_connection()
-        if not conn: return False
-        
+        if not conn:
+            return False
+
         try:
             cursor = conn.cursor()
-            cursor.execute(full_q_query, flat_q_params)
+
+            # 1. Batch insert all questions in one multi-row INSERT
+            placeholders = ", ".join(["(%s, %s, %s, %s)"] * len(questions_data))
+            flat_params = []
+            for q in questions_data:
+                flat_params.extend([q['text'], q['level'], q['difficulty'], q['type']])
+
+            cursor.execute(
+                f"INSERT INTO questions (question_text, bloom_level, difficulty, question_type) VALUES {placeholders}",
+                flat_params
+            )
             first_id = cursor.lastrowid
-            conn.commit()
-            cursor.close()
-            conn.close()
-            
-            # Since IDs are sequential in InnoDB, we can map them
+
+            # Assign sequential IDs (InnoDB guarantees contiguous allocation for multi-row INSERT)
             for i, q in enumerate(questions_data):
                 q['id'] = first_id + i
 
-            # 2. Batch Link to Paper
-            pq_query = "INSERT INTO paper_questions (paper_id, question_id, marks) VALUES (%s, %s, %s)"
-            pq_params = [(paper_id, q['id'], q['marks']) for q in questions_data]
-            self.execute_batch(pq_query, pq_params)
+            # 2. Batch link questions to paper
+            pq_data = [(paper_id, q['id'], q['marks']) for q in questions_data]
+            cursor.executemany(
+                "INSERT INTO paper_questions (paper_id, question_id, marks) VALUES (%s, %s, %s)",
+                pq_data
+            )
 
-            # 3. Batch Insert Options
+            # 3. Batch insert all options
             all_options = []
             for q in questions_data:
-                if 'options' in q:
-                    for opt in q['options']:
-                        all_options.append((q['id'], opt['text'], opt['is_correct']))
-            
+                for opt in q.get('options', []):
+                    all_options.append((q['id'], opt['text'], opt['is_correct']))
+
             if all_options:
-                opt_query = "INSERT INTO question_options (question_id, option_text, is_correct) VALUES (%s, %s, %s)"
-                self.execute_batch(opt_query, all_options)
-                
+                cursor.executemany(
+                    "INSERT INTO question_options (question_id, option_text, is_correct) VALUES (%s, %s, %s)",
+                    all_options
+                )
+
+            conn.commit()
+            cursor.close()
             return True
         except Exception as e:
-            if conn: conn.close()
-            logger.error(f"Failed bulk question save: {e}")
+            conn.rollback()
+            import logging
+            logging.getLogger(__name__).error(f"Failed bulk question save: {e}")
             return False
+        finally:
+            conn.close()

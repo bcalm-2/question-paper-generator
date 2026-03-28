@@ -1,150 +1,109 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getAllPapers } from "../services/paperService.js";
-import { logout } from "../services/authService.js";
 
 function Dashboard() {
     const navigate = useNavigate();
-    const [userName, setUserName] = useState("User");
+    const userName = localStorage.getItem("userName") || "User";
     const [papers, setPapers] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedName = localStorage.getItem("userName");
-        if (storedName) {
-            setUserName(storedName);
-        }
-
-        const fetchPapers = async () => {
-            try {
-                const data = await getAllPapers();
-                setPapers(data);
-            } catch (err) {
-                console.error("Failed to fetch papers:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPapers();
+        getAllPapers()
+            .then(setPapers)
+            .catch(console.error)
+            .finally(() => setLoading(false));
     }, []);
 
+    const subjects = [...new Set(papers.map(p => p.subject))];
+    const lastDate = papers[0]
+        ? new Date(papers[0].created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+        : "—";
+
+    const difficultyBadge = (d) => {
+        if (!d) return null;
+        const map = { Easy: "badge-easy", Medium: "badge-medium", Hard: "badge-hard" };
+        return <span className={`badge ${map[d] || "badge-subject"}`}>{d}</span>;
+    };
+
     return (
-        <div className="paper-container animate-fade-in">
-            {/* Header Section */}
-            <div className="glass-card mb-8">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                        <h1 className="title" style={{ textAlign: "left", fontSize: "1.8rem", marginBottom: "0.5rem" }}>
-                            Dashboard
-                        </h1>
-                        <p className="text-muted">Welcome, {userName}!</p>
-                    </div>
-                    <button
-                        onClick={() => {
-                            logout();
-                            navigate("/auth");
-                        }}
-                        style={{
-                            background: "rgba(239, 68, 68, 0.1)",
-                            color: "#ef4444",
-                            border: "1px solid rgba(239, 68, 68, 0.3)",
-                            padding: "0.5rem 1rem",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            fontSize: "0.9rem",
-                            fontWeight: "500",
-                            transition: "all 0.2s"
-                        }}
-                        onMouseOver={(e) => e.target.style.background = "rgba(239, 68, 68, 0.2)"}
-                        onMouseOut={(e) => e.target.style.background = "rgba(239, 68, 68, 0.1)"}
-                    >
-                        Logout
-                    </button>
+        <div className="animate-fade">
+            {/* Page header */}
+            <div className="flex justify-between" style={{ alignItems: "flex-start", marginBottom: "1.75rem", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                    <h1 className="page-title">Dashboard</h1>
+                    <p className="page-subtitle">Welcome back, {userName} 👋</p>
                 </div>
+                <button className="btn btn-primary" onClick={() => navigate("/create-paper")}>
+                    + Create Paper
+                </button>
+            </div>
 
-                <div style={{ marginTop: "1.5rem" }}>
-                    <button
-                        className="btn-primary"
-                        onClick={() => navigate("/create-paper")}
-                        style={{ width: "auto", padding: "0.8rem 1.5rem" }}
-                    >
-                        + Create New Paper
-                    </button>
-                    <button
-                        className="btn-secondary"
-                        onClick={() => navigate("/config")}
-                        style={{
-                            width: "auto",
-                            padding: "0.8rem 1.5rem",
-                            marginLeft: "1rem",
-                            background: "transparent",
-                            border: "1px solid #60a5fa",
-                            color: "#60a5fa",
-                            borderRadius: "8px",
-                            cursor: "pointer"
-                        }}
-                    >
-                        ⚙ Configure Ecosystem
-                    </button>
+            {/* Stats */}
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <span className="stat-label">Total Papers</span>
+                    <span className="stat-value">{papers.length}</span>
+                </div>
+                <div className="stat-card">
+                    <span className="stat-label">Subjects</span>
+                    <span className="stat-value">{subjects.length}</span>
+                </div>
+                <div className="stat-card">
+                    <span className="stat-label">Last Generated</span>
+                    <span className="stat-value" style={{ fontSize: "1.25rem" }}>{lastDate}</span>
                 </div>
             </div>
 
-            {/* Existing Papers List */}
-            <div className="glass-card" style={{ marginTop: "2rem" }}>
-                <h2 className="section-title" style={{ fontSize: "1.2rem", color: "white", marginBottom: "1.5rem" }}>
-                    Your Question Papers
-                </h2>
+            {/* Papers grid */}
+            <div className="flex justify-between" style={{ alignItems: "center", marginBottom: "1rem" }}>
+                <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text)" }}>Your Papers</h2>
+                <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{papers.length} total</span>
+            </div>
 
-                <div className="papers-list">
-                    {loading ? (
-                        <p className="text-muted">Loading papers...</p>
-                    ) : papers.length === 0 ? (
-                        <p className="text-muted">No papers found. Create one to get started!</p>
-                    ) : (
-                        papers.map((paper) => (
-                            <div
-                                key={paper.id}
-                                className="paper-item"
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    padding: "1rem",
-                                    background: "rgba(255, 255, 255, 0.05)",
-                                    border: "1px solid var(--border)",
-                                    borderRadius: "12px",
-                                    marginBottom: "1rem",
-                                    transition: "all 0.2s ease"
-                                }}
-                            >
+            {loading ? (
+                <div className="spinner-outer"><div className="spinner" /></div>
+            ) : papers.length === 0 ? (
+                <div className="empty-state">
+                    <div className="empty-icon">📄</div>
+                    <div className="empty-title">No papers yet</div>
+                    <p className="empty-desc">Generate your first AI question paper in under 2 seconds.</p>
+                    <button className="btn btn-primary" onClick={() => navigate("/create-paper")}>
+                        Create First Paper
+                    </button>
+                </div>
+            ) : (
+                <div className="papers-grid">
+                    {papers.map((paper) => (
+                        <div key={paper.id} className="paper-card">
+                            <div className="paper-card-header">
                                 <div>
-                                    <h3 style={{ fontSize: "1.1rem", marginBottom: "0.25rem", fontWeight: "600" }}>
-                                        {paper.subject}
-                                    </h3>
-                                    <p className="text-muted" style={{ fontSize: "0.9rem" }}>
-                                        {paper.title} • {paper.date}
-                                    </p>
+                                    <div className="paper-card-badges" style={{ marginBottom: "0.5rem" }}>
+                                        <span className="badge badge-subject">{paper.subject}</span>
+                                        {difficultyBadge(paper.difficulty)}
+                                    </div>
+                                    <div className="paper-card-title">{paper.title}</div>
                                 </div>
-
-                                <Link
-                                    to={`/paper/${paper.id}`}
-                                    className="btn-primary"
-                                    style={{
-                                        width: "auto",
-                                        padding: "0.5rem 1rem",
-                                        fontSize: "0.9rem",
-                                        marginTop: 0,
-                                        textDecoration: "none",
-                                        display: "inline-block"
-                                    }}
-                                >
-                                    View
-                                </Link>
                             </div>
-                        )))}
+                            <div className="paper-card-meta flex gap-sm" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                <span>🎯 {paper.marks} marks</span>
+                                <span>•</span>
+                                <span>⏱ {paper.duration}</span>
+                            </div>
+                            {paper.created_at && (
+                                <div className="paper-card-meta" style={{ fontSize: "0.78rem" }}>
+                                    {new Date(paper.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                </div>
+                            )}
+                            <div className="paper-card-footer">
+                                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/paper/${paper.id}`)}>
+                                    View →
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            </div>
+            )}
         </div>
     );
 }

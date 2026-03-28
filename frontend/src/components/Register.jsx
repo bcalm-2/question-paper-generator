@@ -1,86 +1,99 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { register } from "../services/authService";
 
-function Register({ switchToLogin }) {
+function Register({ switchToLogin, theme, onToggleTheme }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
-
-    if (!form.name || !form.email || !form.password) {
-      setError("All fields are required");
-      return;
-    }
-
+    if (!form.name || !form.email || !form.password) { setError("All fields are required"); return; }
     setError("");
-    setError("");
-
+    setLoading(true);
     try {
       await register(form);
       navigate("/dashboard");
     } catch (err) {
       setError(err.error || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
   return (
-    <div className="auth-card animate-fade-in">
-      <form className="glass-card" onSubmit={handleRegister}>
-        <h2 className="title">Create Account</h2>
+    <div className="auth-wrapper">
+      {/* Left brand panel */}
+      <div className="auth-brand">
+        <div className="auth-brand-logo">Questify</div>
+        <p className="auth-brand-tagline">
+          Join thousands of educators automating question paper creation with AI.
+        </p>
+        <div className="auth-brand-features">
+          {[
+            { icon: "📚", text: "5 subjects pre-configured" },
+            { icon: "🎯", text: "Bloom's level targeting" },
+            { icon: "📥", text: "Upload your own reference files" },
+          ].map((f) => (
+            <div className="auth-brand-feature" key={f.text}>
+              <div className="auth-brand-feature-icon">{f.icon}</div>
+              <span>{f.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div className="auth-form">
+        <div className="flex justify-between" style={{ marginBottom: "1.75rem", alignItems: "center" }}>
+          <div>
+            <h2 style={{ fontSize: "1.4rem", marginBottom: "0.2rem" }}>Create account</h2>
+            <p className="text-muted" style={{ fontSize: "0.875rem" }}>Start generating papers in minutes</p>
+          </div>
+          <button className="theme-toggle" onClick={onToggleTheme} title="Toggle theme">
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
+        </div>
 
         {error && (
-          <div className="error-msg">
-            <span>⚠️</span> {error}
+          <div className="alert alert-error">
+            <span className="alert-icon">⚠️</span> {error}
           </div>
         )}
 
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        </div>
+        <form onSubmit={handleRegister}>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input type="text" placeholder="Srashti Dwivedi" value={form.name} onChange={update("name")} autoComplete="name" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input type="email" placeholder="you@example.com" value={form.email} onChange={update("email")} autoComplete="email" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input type="password" placeholder="Min. 8 characters" value={form.password} onChange={update("password")} autoComplete="new-password" />
+          </div>
 
-        <div className="form-group">
-          <input
-            type="email"
-            placeholder="Email Address"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
+          <button
+            type="submit"
+            className="btn btn-primary btn-full"
+            disabled={loading}
+            style={{ marginTop: "1rem" }}
+          >
+            {loading ? "Creating account…" : "Create Account →"}
+          </button>
+        </form>
 
-        <div className="form-group">
-          <input
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </div>
-
-        <button type="submit" className="btn-primary">
-          Sign Up
-        </button>
-
-        <p className="text-center mt-4">
-          <span className="text-muted" style={{ color: 'var(--text-muted)' }}>Already have an account? </span>
-          <span className="text-link" onClick={switchToLogin}>
-            Log in
-          </span>
+        <p className="text-center mt-md" style={{ fontSize: "0.875rem" }}>
+          <span className="text-muted">Already have an account? </span>
+          <span className="text-link" onClick={switchToLogin}>Sign in</span>
         </p>
-      </form>
+      </div>
     </div>
   );
 }

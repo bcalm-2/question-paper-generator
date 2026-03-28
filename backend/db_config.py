@@ -36,7 +36,7 @@ def get_db_pool():
         try:
             _db_pool = pooling.MySQLConnectionPool(
                 pool_name="qpg_pool",
-                pool_size=5,  # Reduced for local/Railway limits
+                pool_size=10,  # Increased for better concurrency
                 pool_reset_session=True,
                 **config
             )
@@ -110,14 +110,24 @@ def init_db():
                     cursor.execute("INSERT INTO topics (subject_id, name) VALUES (%s, %s)", (subject_id, topic_name))
                 print(f"Seeded {len(topics)} topics for {subject_name}")
 
-        # Add explicit indexes for performance (if they don't exist via table def)
-        logger.info("Checking for missing performance indexes...")
+        # Add explicit indexes for performance (covers existing DBs too)
+        logger.info("Ensuring all performance indexes exist...")
         indexes_to_add = [
+            # Original indexes
             ("subjects", "idx_sub_name", "name"),
             ("topics", "idx_topic_name", "name"),
             ("questions", "idx_q_bloom", "bloom_level"),
             ("questions", "idx_q_difficulty", "difficulty"),
-            ("papers", "idx_p_created", "created_at")
+            ("papers", "idx_p_created", "created_at"),
+            # FK / join indexes (critical for performance)
+            ("topics", "idx_topic_subject", "subject_id"),
+            ("questions", "idx_question_topic", "topic_id"),
+            ("questions", "idx_question_type", "question_type"),
+            ("papers", "idx_paper_user", "user_id"),
+            ("papers", "idx_paper_subject", "subject_id"),
+            ("paper_questions", "idx_pq_paper", "paper_id"),
+            ("paper_questions", "idx_pq_question", "question_id"),
+            ("question_options", "idx_opt_question", "question_id"),
         ]
 
         for table, idx_name, column in indexes_to_add:

@@ -128,17 +128,15 @@ def download_paper(paper_id):
         return jsonify({"error": "Unauthorized"}), 401
 
     logger.info(f"Generating PDF for paper {paper_id}")
-    result, status = paper_service.get_paper_pdf(paper_id, user_id)
+    pdf_buffer, paper, status = paper_service.get_paper_pdf(paper_id, user_id)
     if status == 200:
         logger.info(f"PDF generated successfully for paper {paper_id}")
-        # result is the pdf_buffer
-        paper, _ = paper_service.get_paper_details(paper_id, user_id)
         filename = f"{paper['subject']}_{paper['difficulty']}_Paper.pdf".replace(" ", "_")
         return send_file(
-            result,
+            pdf_buffer,
             as_attachment=True,
             download_name=filename,
             mimetype='application/pdf'
         )
-    logger.error(f"Failed to generate PDF for paper {paper_id}: {result.get('error')}")
-    return jsonify(result), status
+    logger.error(f"Failed to generate PDF for paper {paper_id}: {paper.get('error')}")
+    return jsonify(paper), status

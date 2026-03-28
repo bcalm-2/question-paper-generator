@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS topics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     subject_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    INDEX (name)
+    INDEX (name),
+    INDEX idx_topic_subject (subject_id)
 );
 """
 
@@ -42,7 +43,9 @@ CREATE TABLE IF NOT EXISTS questions (
     difficulty VARCHAR(50) NOT NULL,
     question_type ENUM('MCQ','Descriptive') NOT NULL,
     INDEX (bloom_level),
-    INDEX (difficulty)
+    INDEX (difficulty),
+    INDEX idx_question_topic (topic_id),
+    INDEX idx_question_type (question_type)
 );
 """
 
@@ -56,7 +59,9 @@ CREATE TABLE IF NOT EXISTS papers (
     duration VARCHAR(50) NOT NULL,
     difficulty VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX (created_at)
+    INDEX (created_at),
+    INDEX idx_paper_user (user_id),
+    INDEX idx_paper_subject (subject_id)
 );
 """
 
@@ -65,7 +70,9 @@ CREATE TABLE IF NOT EXISTS paper_questions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     paper_id INT NOT NULL,
     question_id INT NOT NULL,
-    marks INT DEFAULT 0
+    marks INT DEFAULT 0,
+    INDEX idx_pq_paper (paper_id),
+    INDEX idx_pq_question (question_id)
 );
 """
 
@@ -74,7 +81,8 @@ CREATE TABLE IF NOT EXISTS question_options (
     id INT AUTO_INCREMENT PRIMARY KEY,
     question_id INT NOT NULL,
     option_text TEXT NOT NULL,
-    is_correct BOOLEAN DEFAULT FALSE
+    is_correct BOOLEAN DEFAULT FALSE,
+    INDEX idx_opt_question (question_id)
 );
 """
 
