@@ -1,7 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
-from services.config_service import config_service
+from infrastructure.config_service import config_service
 
 class AuthService:
     def __init__(self, user_repo):

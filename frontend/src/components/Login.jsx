@@ -9,15 +9,28 @@ function Login({ switchToRegister, theme, onToggleTheme }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Handles the login submission flow: validation -> session creation -> redirect.
+   */
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setError("All fields are required"); return; }
+
+    // Basic Client-side validation
+    if (!email || !password) {
+      setError("All fields are required");
+      return;
+    }
+
     setError("");
     setLoading(true);
+
     try {
+      // API call; sets the 'qpg-session-id' in localStorage internally via authService
       await login({ email, password });
+      // On success, transition to the authenticated workspace
       navigate("/dashboard");
     } catch (err) {
+      // Extract specific error messages (e.g., "Invalid credentials") from the backend
       setError(err.error || "Login failed. Please try again.");
     } finally {
       setLoading(false);

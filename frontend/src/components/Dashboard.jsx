@@ -2,12 +2,24 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getAllPapers } from "../services/paperService.js";
 
+/**
+ * Dashboard Component
+ * 
+ * Provides an overview of generated papers and quick actions.
+ * Features:
+ * - Stats summary (Total Papers, Subjects)
+ * - Grid view of recently generated papers
+ * - Navigation to Paper Creator
+ */
 function Dashboard() {
     const navigate = useNavigate();
     const userName = localStorage.getItem("userName") || "User";
     const [papers, setPapers] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    /**
+     * Fetches the user's generated papers on component mount.
+     */
     useEffect(() => {
         getAllPapers()
             .then(setPapers)
@@ -15,13 +27,19 @@ function Dashboard() {
             .finally(() => setLoading(false));
     }, []);
 
+    // Derived statistics: Calculate unique subjects and format the latest paper date for the stats bar
     const subjects = [...new Set(papers.map(p => p.subject))];
     const lastDate = papers[0]
         ? new Date(papers[0].created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
         : "—";
 
+    /**
+     * Renders a styled badge based on difficulty level.
+     * @param {string} d - Difficulty level (Easy, Medium, Hard)
+     */
     const difficultyBadge = (d) => {
         if (!d) return null;
+        // Map difficulty levels to specific CSS utility classes for consistent branding
         const map = { Easy: "badge-easy", Medium: "badge-medium", Hard: "badge-hard" };
         return <span className={`badge ${map[d] || "badge-subject"}`}>{d}</span>;
     };
@@ -55,11 +73,13 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Papers grid */}
+            {/* Papers grid section header */}
             <div className="flex justify-between" style={{ alignItems: "center", marginBottom: "1rem" }}>
                 <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text)" }}>Your Papers</h2>
                 <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{papers.length} total</span>
             </div>
+
+            {/* Main Content Area: Handles loading, empty, and data states */}
 
             {loading ? (
                 <div className="spinner-outer"><div className="spinner" /></div>

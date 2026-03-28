@@ -4,14 +4,29 @@ import { getConfig, generatePaper, uploadFile, getPaperById, updatePaper } from 
 
 const STEPS = ["Subject", "Topics", "Blooms", "Difficulty"];
 
+/**
+ * Utility to determine the current step index based on filled form data.
+ * @param {string} subjectId - Selected subject ID
+ * @param {Array} topics - Selected topics
+ * @param {Array} blooms - Selected Bloom's levels
+ * @param {string} difficulty - Selected difficulty
+ * @returns {number} Current step index (0-4)
+ */
 function stepIndex(subjectId, topics, blooms, difficulty) {
-  if (!subjectId) return 0;
-  if (topics.length === 0) return 1;
-  if (blooms.length === 0) return 2;
-  if (!difficulty) return 3;
-  return 4;
+  // Logic: Step index is determined by the presence of data for each sequential stage.
+  if (!subjectId) return 0;         // Step 1: Select Subject
+  if (topics.length === 0) return 1; // Step 2: Select Topics
+  if (blooms.length === 0) return 2; // Step 3: Select Bloom's Levels
+  if (!difficulty) return 3;         // Step 4: Select Difficulty
+  return 4;                          // Final: Ready for generation
 }
 
+/**
+ * CreatePaper Component
+ * 
+ * A multi-step form for generating or editing question papers.
+ * Steps: Subject Selection -> Topic Selection -> Bloom's Level -> Difficulty
+ */
 function CreatePaper() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -28,11 +43,17 @@ function CreatePaper() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState("");
 
+  /**
+   * Fetches configuration data (subjects, topics) and existing paper data if in Edit Mode.
+   */
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch global configuration (subjects, topics, bloom levels) from backend
         const configData = await getConfig();
         setConfig(configData);
+
+        // State Hydration: If editing an existing paper, load its parameters into local state
         if (isEditMode) {
           const paperData = await getPaperById(id);
           setSelectedSubjectId(paperData.subject_id);
@@ -41,7 +62,7 @@ function CreatePaper() {
           setDifficulty(paperData.difficulty || "");
         }
       } catch (err) {
-        console.error("Failed to load data:", err);
+        console.error("CreatePaper: Failed to load context data:", err);
       } finally {
         setLoading(false);
       }
@@ -61,10 +82,21 @@ function CreatePaper() {
   const toggle = (value, list, setList) =>
     setList(list.includes(value) ? list.filter(i => i !== value) : [...list, value]);
 
+  /**
+   * Handles file selection and immediate upload to the server.
+   * Linked to the selected subject to ensure correct material mapping.
+   */
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!selectedSubjectId) { showToast("Please select a subject first.", "error"); e.target.value = null; return; }
+
+    // Safety check: Subject must be selected for mapping
+    if (!selectedSubjectId) {
+      showToast("Please select a subject first.", "error");
+      e.target.value = null;
+      return;
+    }
+
     setUploadStatus("uploading");
     try {
       await uploadFile(file, selectedSubjectId);
@@ -80,15 +112,18 @@ function CreatePaper() {
     setSubmitting(true);
     try {
       if (isEditMode) {
+        // Action: Update existing paper metadata and configuration
         await updatePaper(id, { subject_id: selectedSubjectId, topics, blooms, difficulty });
         showToast("Paper updated successfully!");
         navigate(`/paper/${id}`);
       } else {
+        // Action: Generate a brand new paper using the AI engine
         const result = await generatePaper({ subject_id: selectedSubjectId, topics, blooms, difficulty });
         showToast("Paper generated successfully!");
         navigate(`/paper/${result.paperId}`);
       }
     } catch (err) {
+      // Error handling with dynamic context based on mode (Edit vs Create)
       showToast(`Failed to ${isEditMode ? "update" : "generate"} paper. Please try again.`, "error");
     } finally {
       setSubmitting(false);

@@ -2,6 +2,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { getPaperById, downloadPaperPDF } from "../services/paperService.js";
 
+/**
+ * ViewPaper Component
+ * 
+ * Displays a print-ready preview of a generated question paper.
+ * Provides actions to:
+ * - Edit paper metadata (Title, Duration, Marks)
+ * - Download the paper as a PDF
+ */
 function ViewPaper() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -9,6 +17,9 @@ function ViewPaper() {
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
 
+    /**
+     * Fetches paper details and its questions on mount.
+     */
     useEffect(() => {
         getPaperById(id)
             .then(setPaper)
@@ -16,11 +27,16 @@ function ViewPaper() {
             .finally(() => setLoading(false));
     }, [id]);
 
+    /**
+     * Triggers the PDF generation and download flow.
+     * Communicates with the ReportLab-based backend to receive a byte stream.
+     */
     const handleDownload = async () => {
         setDownloading(true);
         try {
             await downloadPaperPDF(id);
-        } catch {
+        } catch (error) {
+            console.error("ViewPaper: PDF download failed", error);
             alert("Failed to download PDF. Please try again.");
         } finally {
             setDownloading(false);

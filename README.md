@@ -38,14 +38,41 @@ This system empowers educators to generate high-quality, balanced question paper
 *   **PDF Generation**: **ReportLab**.
 
 ### System Architecture
-The project follows a modular **Service-Repository** pattern:
-*   **Routes**: Handles API endpoints and session verification.
-*   **Services**: Orchestrates business logic (e.g., `PaperService` for generation logic).
-*   **Repositories**: Direct data access layer for MySQL persistence.
-*   **NLP Engine**: 
-    *   `TextExtractor`: Handles PDF/TXT parsing.
-    *   `NLPAnalyzer`: Uses SpaCy for sentence extraction, keyword mapping, and subject identification.
-    *   `BloomClassifier`: Categorizes questions into cognitive levels.
+
+The project follows a modular **Service-Repository** pattern to ensure Single Responsibility Principle (SRP) and high maintainability.
+
+```mermaid
+graph TD
+    UI[React Frontend] --> Controller[Flask Blueprints/Routes]
+    Controller --> AuthSvc[AuthService]
+    Controller --> PaperSvc[PaperService]
+    Controller --> ConfigSvc[AppConfigService]
+    
+    PaperSvc --> FileSvc[FileService]
+    PaperSvc --> GenStr[QuestionStrategy]
+    PaperSvc --> Extract[TextExtractor]
+    PaperSvc --> Analyze[NLPAnalyzer]
+    
+    AuthSvc --> UserRepo[UserRepository]
+    PaperSvc --> PaperRepo[PaperRepository]
+    ConfigSvc --> SubRepo[SubjectRepository]
+    
+    UserRepo --> DB[(MySQL)]
+    PaperRepo --> DB
+    SubRepo --> DB
+```
+
+*   **Controller Layer (Blueprints)**: Handles request parsing, session verification via `auth_service`, and response formatting.
+*   **Service Layer**: Orchestrates complex business logic:
+    *   `PaperService`: High-level flow for paper generation and retrieval.
+    *   `FileService`: Manages physical file storage, uploads, and subject mapping.
+    *   `AppConfigService`: Assembles and caches system-wide configuration (subjects, topics, Bloom's).
+    *   `QuestionStrategy`: Separates the logic of *how* questions are selected and formatted from raw analysis.
+*   **AI/NLP Engine**: 
+    *   `TextExtractor`: Parsers for PDF, TXT, and DOCX.
+    *   `NLPAnalyzer`: Uses **SpaCy** for linguistic analysis, entity extraction, and identifying "question-worthy" sentences.
+    *   `BloomClassifier`: Categorizes questions into cognitive levels based on verb-lemmas.
+*   **Repository Layer**: Encapsulates all raw SQL queries and connection management, providing a clean API to services.
 
 ### Database Schema
 *   `users`: Name, email, hashed passwords.

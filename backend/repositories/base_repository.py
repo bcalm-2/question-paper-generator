@@ -1,4 +1,4 @@
-from db_config import get_db_connection
+from infrastructure.db_config import get_db_connection
 import time
 import logging
 

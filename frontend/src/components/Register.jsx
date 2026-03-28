@@ -8,21 +8,35 @@ function Register({ switchToLogin, theme, onToggleTheme }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Orchestrates the registration flow: validation -> API call -> Navigation.
+   */
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password) { setError("All fields are required"); return; }
+
+    // Basic Client-side validation: Ensure all required fields are populated
+    if (!form.name || !form.email || !form.password) {
+      setError("All fields are required");
+      return;
+    }
+
     setError("");
     setLoading(true);
+
     try {
+      // API call via authService; handles password hashing and DB insertion on backend
       await register(form);
+      // Redirect to dashboard on successful account creation
       navigate("/dashboard");
     } catch (err) {
+      // Extract error message from backend response if available
       setError(err.error || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Higher-order function for clean state updates across multiple form fields
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
   return (

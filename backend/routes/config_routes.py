@@ -1,139 +1,106 @@
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify
-import os
-import json
-from repositories.subject_repository import SubjectRepository, TopicRepository
-from routes.auth_routes import auth_service
-from utils.cache import ConfigCache
+from core.container import auth_service, app_config_service, subject_service, file_service
 import logging
 
-config_bp = Blueprint('config', __name__)
+config_bp = Blueprint("config", __name__)
 logger = logging.getLogger(__name__)
 
-subject_repo = SubjectRepository()
-topic_repo = TopicRepository()
 
-RESOURCE_FOLDER = "resources"
-MAPPING_FILE = "mapping.json"
+# ---------------------------------------------------------------------------
+# Helper — auth guard
+# ---------------------------------------------------------------------------
+
+def _get_user_id() -> int | None:
+    """Extracts and validates the session token from the request header."""
+    return auth_service.get_user_id_by_session(request.headers.get("X-Session-Id"))
+
+
+# ---------------------------------------------------------------------------
+# Application config
+# ---------------------------------------------------------------------------
+
+@config_bp.route("/api/config", methods=["GET"])
+def get_app_config():
+    """
+    Return application configuration (subjects, topics, Bloom's levels).
+    Served from cache after the first request.
+    """
+    if not _get_user_id():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    config = app_config_service.get_app_config()
+    return jsonify(config), 200
+
+
+# ---------------------------------------------------------------------------
+# Subject management (admin)
+# ---------------------------------------------------------------------------
 
 @config_bp.route("/api/admin/subjects", methods=["GET"])
 def get_subjects():
-    session_id = request.headers.get("X-Session-Id")
-    user_id = auth_service.get_user_id_by_session(session_id)
-    if not user_id:
+    """Return full subject list with topics for the admin panel."""
+    if not _get_user_id():
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Try cache first
-    cached_subjects = ConfigCache.get("admin_subjects")
-    if cached_subjects:
-        logger.info("Serving admin subjects from cache")
-        return jsonify(cached_subjects), 200
+    subjects = app_config_service.get_admin_subjects()
+    return jsonify(subjects), 200
 
-    # Optimized single JOIN query
-    flat_data = subject_repo.get_all_with_topics()
-    
-    subjects_dict = {}
-    for row in flat_data:
-        sub_id = row['subject_id']
-        if sub_id not in subjects_dict:
-            subjects_dict[sub_id] = {
-                "id": sub_id,
-                "name": row['subject_name'],
-                "description": row['subject_description'],
-                "topics": []
-            }
-        
-        if row['topic_name']:
-            subjects_dict[sub_id]['topics'].append({
-                "id": row['topic_id'],
-                "name": row['topic_name']
-            })
-    
-    subjects_list = list(subjects_dict.values())
-    ConfigCache.set("admin_subjects", subjects_list)
-    
-    return jsonify(subjects_list), 200
 
 @config_bp.route("/api/admin/subjects", methods=["POST"])
 def add_subject():
-    session_id = request.headers.get("X-Session-Id")
-    user_id = auth_service.get_user_id_by_session(session_id)
+    """
+    Create a new subject with optional topics.
+
+    Request body (JSON): ``{ name: str, topics: [str, ...] }``
+    """
+    user_id = _get_user_id()
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
-    name = data.get("name")
-    topics = data.get("topics", [])
+    result, status = subject_service.add_subject(
+        name=data.get("name"),
+        topics=data.get("topics", []),
+    )
+    if status == 201:
+        logger.info(f"Subject '{data.get('name')}' added by user {user_id}")
+    return jsonify(result), status
 
-    if not name:
-        return jsonify({"error": "Name is required"}), 400
-
-    subject_id = subject_repo.create(name)
-    for topic_name in topics:
-        topic_repo.create(subject_id, topic_name)
-
-    ConfigCache.clear()
-    logger.info("Configuration cache invalidated due to new subject addition")
-    return jsonify({"message": "Subject added successfully", "id": subject_id}), 201
 
 @config_bp.route("/api/admin/subjects/<int:subject_id>", methods=["DELETE"])
-def delete_subject(subject_id):
-    session_id = request.headers.get("X-Session-Id")
-    user_id = auth_service.get_user_id_by_session(session_id)
+def delete_subject(subject_id: int):
+    """Delete a subject and clear the configuration cache."""
+    user_id = _get_user_id()
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    subject_repo.delete(subject_id)
-    ConfigCache.clear()
-    logger.info(f"Configuration cache invalidated due to deletion of subject {subject_id}")
-    return jsonify({"message": "Subject deleted successfully"}), 200
+    result, status = subject_service.delete_subject(subject_id)
+    logger.info(f"Subject {subject_id} deleted by user {user_id}")
+    return jsonify(result), status
+
+
+# ---------------------------------------------------------------------------
+# File management (admin)
+# ---------------------------------------------------------------------------
 
 @config_bp.route("/api/admin/files", methods=["GET"])
 def list_files():
-    session_id = request.headers.get("X-Session-Id")
-    user_id = auth_service.get_user_id_by_session(session_id)
-    if not user_id:
+    """List all uploaded reference files with their subject mappings."""
+    if not _get_user_id():
         return jsonify({"error": "Unauthorized"}), 401
 
-    if not os.path.exists(RESOURCE_FOLDER):
-        return jsonify([]), 200
+    return jsonify(file_service.list_files()), 200
 
-    files = os.listdir(RESOURCE_FOLDER)
-    
-    mapping = {}
-    if os.path.exists(MAPPING_FILE):
-        with open(MAPPING_FILE, "r") as f:
-            mapping = json.load(f)
-
-    file_list = []
-    for f in files:
-        file_list.append({
-            "name": f,
-            "subject": mapping.get(f, "Unassigned")
-        })
-
-    return jsonify(file_list), 200
 
 @config_bp.route("/api/admin/files/<filename>", methods=["DELETE"])
-def delete_file(filename):
-    session_id = request.headers.get("X-Session-Id")
-    user_id = auth_service.get_user_id_by_session(session_id)
-    if not user_id:
+def delete_file(filename: str):
+    """Permanently delete a reference file from the server."""
+    if not _get_user_id():
         return jsonify({"error": "Unauthorized"}), 401
 
-    file_path = os.path.join(RESOURCE_FOLDER, filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        logger.info(f"File deleted: {filename}")
-        
-        # Update mapping
-        if os.path.exists(MAPPING_FILE):
-            with open(MAPPING_FILE, "r") as f:
-                mapping = json.load(f)
-            if filename in mapping:
-                del mapping[filename]
-                with open(MAPPING_FILE, "w") as f:
-                    json.dump(mapping, f, indent=4)
-        
+    if file_service.delete_entry(filename):
         return jsonify({"message": "File deleted successfully"}), 200
-    
+
     return jsonify({"error": "File not found"}), 404

@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import adminService from "../services/adminService";
 
+/**
+ * ConfigDashboard Component
+ * 
+ * Administrative area for managing the system's core data.
+ * Features:
+ * - Subject Management: Add/Delete subjects and topics.
+ * - File Management: View and delete reference material (PDF/TXT).
+ * - Real-time statistics and mapping oversight.
+ */
 const ConfigDashboard = () => {
     const [activeTab, setActiveTab] = useState("subjects");
     const [subjects, setSubjects] = useState([]);
@@ -9,6 +18,9 @@ const ConfigDashboard = () => {
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState(null);
 
+    /**
+     * Re-fetches data whenever the active tab changes.
+     */
     useEffect(() => { fetchData(); }, [activeTab]);
 
     const showToast = (msg, type = "success") => {
@@ -16,26 +28,40 @@ const ConfigDashboard = () => {
         setTimeout(() => setToast(null), 3200);
     };
 
+    /**
+     * Core orchestrator for fetching data based on the selected tab (Subjects or Files).
+     * This keeps the local state synchronized with the administrative backend.
+     */
     const fetchData = async () => {
         setLoading(true);
         try {
             if (activeTab === "subjects") setSubjects(await adminService.getAdminSubjects());
             else setFiles(await adminService.getAdminFiles());
-        } catch { /* silent */ }
+        } catch (error) {
+            console.error("ConfigDashboard: Fetch failed", error);
+        }
         setLoading(false);
     };
 
+    /**
+     * Handles addition of new academic subjects and their initial topics.
+     * Triggers a cache invalidation on the backend to reflect changes immediately.
+     */
     const handleAddSubject = async (e) => {
         e.preventDefault();
+        // Process comma-separated topics into a clean array
         const topicsArray = newSubject.topics.split(",").map(t => t.trim()).filter(Boolean);
         try {
             await adminService.addSubject({ name: newSubject.name, topics: topicsArray });
             setNewSubject({ name: "", topics: "" });
             showToast("Subject added successfully!");
-            fetchData();
+            fetchData(); // Refresh current list
         } catch { showToast("Failed to add subject.", "error"); }
     };
 
+    /**
+     * Deletes a subject and its associated topics after user confirmation.
+     */
     const handleDeleteSubject = async (id) => {
         if (!window.confirm("Delete this subject and all its topics?")) return;
         try {
@@ -45,6 +71,9 @@ const ConfigDashboard = () => {
         } catch { showToast("Failed to delete.", "error"); }
     };
 
+    /**
+     * Permanently removes a reference file from the resource directory.
+     */
     const handleDeleteFile = async (filename) => {
         if (!window.confirm(`Delete "${filename}"?`)) return;
         try {
